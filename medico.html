@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>SO Médico — Teleflex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ── TOKENS ─────────────────────────────────────────── */
+:root{
+  --navy:#0B2545;--blue:#1A56DB;--blue2:#3B82F6;--blue3:#EFF6FF;
+  --green:#059669;--green2:#D1FAE5;
+  --amber:#D97706;--amber2:#FEF3C7;
+  --red:#DC2626;--red2:#FEE2E2;
+  --purple:#7C3AED;--purple2:#EDE9FE;
+  --surf:#FFFFFF;--surf2:#F8FAFC;--surf3:#F1F5F9;
+  --bor:#E2E8F0;--bor2:#CBD5E1;
+  --tx:#0F172A;--tx2:#475569;--tx3:#94A3B8;
+  --nav-h:58px;--radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px rgba(0,0,0,.08),0 4px 6px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--surf2);color:var(--tx);font-size:14px;line-height:1.5}
+
+/* ── LOGIN ───────────────────────────────────────────── */
+#login-screen{
+  position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0B2545 0%,#1A3A6B 50%,#1A56DB 100%);
+}
+.login-card{
+  background:#fff;border-radius:16px;padding:40px;width:100%;max-width:380px;
+  box-shadow:0 25px 50px rgba(0,0,0,.25);
+}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-icon{font-size:36px;margin-bottom:6px}
+.login-logo h1{font-size:22px;font-weight:700;color:var(--navy);letter-spacing:-.5px}
+.login-logo p{font-size:12px;color:var(--tx3);margin-top:2px}
+.login-field{margin-bottom:14px}
+.login-field label{display:block;font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.login-field input{width:100%;padding:10px 13px;border:1.5px solid var(--bor);border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:.15s}
+.login-field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue3)}
+#login-err{display:none;background:var(--red2);color:var(--red);border-radius:7px;padding:8px 12px;font-size:12px;margin-bottom:12px;text-align:center}
+.btn-login{width:100%;background:var(--navy);color:#fff;border:none;padding:12px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
+.btn-login:hover{background:var(--blue)}
+
+/* ── NAV ─────────────────────────────────────────────── */
+#app{display:none}
+.nav{
+  position:fixed;top:0;left:0;right:0;height:var(--nav-h);z-index:100;
+  background:var(--navy);display:flex;align-items:center;padding:0 16px;gap:4px;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);overflow-x:auto;
+}
+.nav::-webkit-scrollbar{height:3px}
+.nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+.nav-brand{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;margin-right:12px;letter-spacing:-.3px;display:flex;align-items:center;gap:6px}
+.nav-brand span{font-size:9px;font-weight:500;background:var(--blue2);color:#fff;padding:2px 6px;border-radius:4px;letter-spacing:.3px}
+.tb{background:none;border:none;color:rgba(255,255,255,.6);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;padding:6px 10px;border-radius:6px;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:5px}
+.tb:hover{color:#fff;background:rgba(255,255,255,.1)}
+.tb.on{color:#fff;background:rgba(255,255,255,.15)}
+.tb .bc{background:var(--blue2);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;min-width:16px;text-align:center}
+.nav-end{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.user-pill{font-size:11px;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:6px}
+.btn-sm-nav{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;transition:.15s}
+.btn-sm-nav:hover{background:rgba(255,255,255,.2)}
+
+/* ── SCREENS ─────────────────────────────────────────── */
+.sc{display:none;padding:calc(var(--nav-h) + 16px) 16px 24px;min-height:100vh;max-width:1100px;margin:0 auto}
+.sc.on{display:block}
+
+/* ── CARDS ───────────────────────────────────────────── */
+.card{background:var(--surf);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--bor)}
+.card-p{padding:16px}
+.card-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* ── BUTTONS ─────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:5px;border:none;border-radius:7px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;padding:8px 14px;transition:.15s;text-decoration:none}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-navy{background:var(--navy);color:#fff}.btn-navy:hover{background:#1A3A6B}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#1746C0}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#047857}
+.btn-ghost{background:transparent;color:var(--tx2);border:1.5px solid var(--bor)}.btn-ghost:hover{border-color:var(--bor2);background:var(--surf3)}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#B91C1C}
+.btn-amber{background:var(--amber);color:#fff}.btn-amber:hover{background:#B45309}
+.btn-xs{padding:4px 9px;font-size:11px;border-radius:5px}
+.btn-sm{padding:6px 11px;font-size:12px}
+
+/* ── FORM ────────────────────────────────────────────── */
+.fi{margin-bottom:12px}
+.fi label{display:block;font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.fi input,.fi select,.fi textarea{width:100%;padding:8px 11px;border:1.5px solid var(--bor);border-radius:7px;font-size:13px;font-family:inherit;outline:none;background:var(--surf);color:var(--tx);transition:.15s}
+.fi input:focus,.fi select:focus,.fi textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue3)}
+.fi textarea{resize:vertical;min-height:72px}
+.fi input[readonly],.fi input[disabled]{background:var(--surf3);color:var(--tx2)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:400px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* ── MODALS ──────────────────────────────────────────── */
+.ov{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);padding:16px;align-items:flex-start;justify-content:center;overflow-y:auto}
+.ov.open{display:flex}
+.mo{background:var(--surf);border-radius:14px;width:100%;max-width:700px;box-shadow:var(--shadow-lg);margin:auto;animation:slideUp .2s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.mo-head{padding:16px 20px;border-bottom:1px solid var(--bor);display:flex;align-items:center;justify-content:space-between}
+.mo-title{font-size:15px;font-weight:700;color:var(--navy)}
+.mo-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--tx3);line-height:1;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:5px;transition:.15s}
+.mo-close:hover{background:var(--surf3);color:var(--tx)}
+.mo-body{padding:20px;max-height:75vh;overflow-y:auto}
+.mo-foot{padding:12px 20px;border-top:1px solid var(--bor);display:flex;gap:8px;justify-content:flex-end}
+
+/* ── KPI CARDS ───────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--surf);border:1px solid var(--bor);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+.kpi-val{font-size:28px;font-weight:700;color:var(--navy);line-height:1;font-family:'DM Mono',monospace}
+.kpi-lbl{font-size:11px;color:var(--tx3);margin-top:3px;font-weight:500;text-transform:uppercase;letter-spacing:.3px}
+.kpi-sub{font-size:10px;color:var(--tx3);margin-top:2px}
+.kpi.blue .kpi-val{color:var(--blue)}
+.kpi.green .kpi-val{color:var(--green)}
+.kpi.amber .kpi-val{color:var(--amber)}
+.kpi.red .kpi-val{color:var(--red)}
+
+/* ── TABLES ──────────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--bor)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--surf3);padding:9px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--bor);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--bor);color:var(--tx);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surf3)}
+
+/* ── PILLS / BADGES ──────────────────────────────────── */
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+.pill-blue{background:var(--blue3);color:var(--blue)}
+.pill-green{background:var(--green2);color:var(--green)}
+.pill-amber{background:var(--amber2);color:var(--amber)}
+.pill-red{background:var(--red2);color:var(--red)}
+.pill-purple{background:var(--purple2);color:var(--purple)}
+.pill-gray{background:var(--surf3);color:var(--tx2)}
+
+/* ── CHARTS ──────────────────────────────────────────── */
+.chart-wrap{position:relative;height:220px}
+
+/* ── SECTION HEADER ──────────────────────────────────── */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.sec-hd h2{font-size:17px;font-weight:700;color:var(--navy);letter-spacing:-.3px}
+.sec-hd p{font-size:11px;color:var(--tx3);margin-top:1px}
+
+/* ── FILTERS BAR ─────────────────────────────────────── */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--surf);border:1px solid var(--bor);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px}
+.filters select,.filters input[type=text],.filters input[type=date]{padding:6px 10px;border:1.5px solid var(--bor);border-radius:7px;font-size:12px;font-family:inherit;outline:none;background:var(--surf);color:var(--tx);transition:.15s}
+.filters select:focus,.filters input:focus{border-color:var(--blue)}
+
+/* ── APARATOS GRID ───────────────────────────────────── */
+.ap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.ap-item label{font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;display:block}
+.ap-row{display:grid;grid-template-columns:1fr 2fr;gap:6px}
+
+/* ── EMPLOYEE CARD ───────────────────────────────────── */
+.emp-card{background:linear-gradient(135deg,var(--navy) 0%,#1A3A6B 100%);border-radius:var(--radius);padding:14px 16px;color:#fff;margin-bottom:12px}
+.emp-card-name{font-size:15px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.emp-card-tag{font-size:10px;font-weight:600;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:8px}
+.emp-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-top:6px}
+.emp-card-field label{font-size:9px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.4px}
+.emp-card-field div{font-size:12px;font-weight:600;color:#fff}
+
+/* ── ANTECEDENTES ────────────────────────────────────── */
+.ant-box{border-radius:var(--radius);padding:12px 14px;margin-bottom:12px}
+.ant-alergias{background:#FEF2F2;border:1.5px solid #FCA5A5}
+.ant-cronicos{background:#FFFBEB;border:1.5px solid #FCD34D}
+.ant-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px}
+.ant-tag{display:inline-flex;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;margin:2px 3px 2px 0}
+
+/* ── TOAST ───────────────────────────────────────────── */
+#toast{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast-item{padding:10px 16px;border-radius:9px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);animation:slideUp .2s ease;max-width:300px}
+.t-ok{background:#ECFDF5;color:#065F46;border:1px solid #6EE7B7}
+.t-err{background:var(--red2);color:#991B1B;border:1px solid #FCA5A5}
+.t-inf{background:var(--blue3);color:#1E40AF;border:1px solid #93C5FD}
+
+/* ── STATUS DOT ──────────────────────────────────────── */
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot-ok{background:var(--green)}.dot-err{background:var(--red)}.dot-busy{background:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── TABS ────────────────────────────────────────────── */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--bor);margin-bottom:16px;overflow-x:auto}
+.tab{background:none;border:none;font-family:inherit;font-size:13px;font-weight:500;color:var(--tx2);padding:9px 14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;white-space:nowrap}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+.tab:hover{color:var(--tx)}
+
+/* ── USERS ───────────────────────────────────────────── */
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--bor);border-radius:8px;margin-bottom:7px;background:var(--surf);gap:10px}
+.user-name{font-weight:600;font-size:13px}
+.user-meta{font-size:11px;color:var(--tx3)}
+
+/* ── VM FORM ─────────────────────────────────────────── */
+.vm-section{margin-bottom:16px}
+.vm-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--bor);display:flex;align-items:center;gap:6px}
+.vitals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.vital-item label{font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;display:block}
+
+/* ── SEARCH ──────────────────────────────────────────── */
+.search-wrap{position:relative}
+.search-wrap input{padding-left:34px}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tx3);font-size:15px;pointer-events:none}
+.search-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--bor);border-radius:9px;box-shadow:var(--shadow-lg);z-index:50;max-height:280px;overflow-y:auto;display:none}
+.search-results.show{display:block}
+.search-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--bor);transition:.12s}
+.search-item:last-child{border-bottom:none}
+.search-item:hover{background:var(--surf3)}
+.search-item-name{font-weight:600;font-size:13px}
+.search-item-meta{font-size:11px;color:var(--tx3)}
+
+/* ── EMPTY STATE ─────────────────────────────────────── */
+.empty{text-align:center;padding:40px 20px;color:var(--tx3)}
+.empty-icon{font-size:36px;margin-bottom:8px}
+.empty-text{font-size:13px;font-weight:500}
+
+/* ── PROGRESS BAR ────────────────────────────────────── */
+.progress-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.progress-label{font-size:11px;font-weight:600;color:var(--tx);min-width:100px}
+.progress-bar-wrap{flex:1;background:var(--surf3);border-radius:4px;height:8px;overflow:hidden}
+.progress-bar{height:100%;border-radius:4px;transition:.4s}
+.progress-count{font-size:11px;font-weight:700;color:var(--tx2);min-width:28px;text-align:right}
+.progress-pct{font-size:10px;color:var(--tx3);min-width:32px;text-align:right}
+
+/* ── MISC ────────────────────────────────────────────── */
+.divider{border:none;border-top:1px solid var(--bor);margin:14px 0}
+.folio{font-family:'DM Mono',monospace;font-size:12px;color:var(--tx2);background:var(--surf3);padding:3px 8px;border-radius:5px}
+.status-bar{position:fixed;bottom:0;left:0;right:0;background:var(--navy);height:22px;display:flex;align-items:center;padding:0 14px;gap:8px;z-index:90}
+.status-text{font-size:10px;color:rgba(255,255,255,.6);font-family:'DM Mono',monospace}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     LOGIN
+══════════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">🏥</div>
+      <h1>Teleflex SO</h1>
+      <p>Módulo Médico — Salud Ocupacional</p>
+    </div>
+    <div id="login-err"></div>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="login-u" placeholder="usuario" autocomplete="username"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-p').focus()">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-p" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Ingresar →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     APP
+══════════════════════════════════════════════════════ -->
+<div id="app">
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">🩺 <span>MÉDICO</span></div>
+  <button class="tb on" id="tb-vm" onclick="go('vm')">📋 Valoraciones</button>
+  <button class="tb" id="tb-enf" onclick="go('enf')">🏥 Enfermería</button>
+  <button class="tb" id="tb-dash" onclick="go('dash')">📊 Dashboard</button>
+  <button class="tb" id="tb-exp" onclick="go('exp')">🗂️ Expediente</button>
+  <button class="tb" id="tb-cit" onclick="go('cit')">📅 Citas <span class="bc" id="bc-cit">0</span></button>
+  <button class="tb" id="tb-hc" onclick="go('hc')">👥 Head Count</button>
+  <button class="tb" id="tb-nut" onclick="go('nut')">🥗 Nutriología</button>
+  <button class="tb" id="tb-usr" onclick="go('usr')">⚙️ Usuarios</button>
+  <div class="nav-end">
+    <div><span class="dot dot-ok" id="sync-dot"></span><span class="status-text" id="sync-lbl" style="color:rgba(255,255,255,.5);font-size:10px">Local</span></div>
+    <div class="user-pill" id="nav-user">Dr. Martínez</div>
+    <button class="btn-sm-nav" onclick="doLogout()">Salir</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════
+     VALORACIONES MÉDICAS
+══════════════════════════════════════════════════════ -->
+<div class="sc on" id="sc-vm">
+  <div class="sec-hd">
+    <div>
+      <h2>Valoraciones Médicas</h2>
+      <p id="vm-subtitle">Dr. Jaime Iván Martínez Espinoza · Cédula 12021447</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="syncVM()">🔄 Sync</button>
+      <button class="btn btn-navy" onclick="abrirNuevaVM()">+ Nueva valoración</button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filters">
+    <div class="search-wrap" style="flex:1;min-width:180px">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Buscar empleado, diagnóstico..." oninput="renderVMLista(this.value)">
+    </div>
+    <select onchange="renderVMLista()" id="vm-fil-planta">
+      <option value="">Todas las plantas</option>
+      <option>Américas</option><option>Barrancas</option><option>Cantera</option><option>Juventud</option>
+    </select>
+    <select onchange="renderVMLista()" id="vm-fil-mes">
+      <option value="">Todos los meses</option>
+    </select>
+  </div>
+
+  <div id="vm-lista"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     DASHBOARD
+══════════════════════════════════════════════════════ -->
+<div class="sc" id="sc-dash">
+  <div class="sec-hd">
+    <div><h2>Dashboard SO</h2><p>NOM-030-STPS · Teleflex Ciudad Juárez</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="exportDash()">📊 Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="syncAll()">🔄 Sync</button>
+    </div>
+  </div>
+  <!-- Filters -->
+  <div class="filters">
+    <select id="d-periodo" onchange="renderDash()">
+      <option value="anio">Por año</option>
+      <option value="mes">Por mes</option>
+      <option value="semana">Por semana</option>
+    </select>
+    <select id="d-yr" onchange="renderDash()"></select>
+    <select id="d-mes-f" onchange="renderDash()" style="display:none">
+      <option value="">Todos los meses</option>
+    </select>
+    <select id="d-planta" onchange="renderDash()">
+      <option value="">Todas las plantas</option>
+      <option>Américas</option><option>Barrancas</option><option>Cantera</option><option>Juventud</option>
+    </select>
+    <select id="d-turno" onchange="renderDash()">
+      <option value="">Todos los turnos</option>
+      <option>Matutino</option><option>Vespertino</option><option>Nocturno</option>
+    </select>
+  </div>
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-val" id="d-tot">0</div><div class="kpi-lbl">Total consultas</div></div>
+    <div class="kpi blue"><div class="kpi-val" id="d-vm">0</div><div class="kpi-lbl">Val. médicas</div></div>
+    <div class="kpi green"><div class="kpi-val" id="d-int">0</div><div class="kpi-lbl">Internos</div></div>
+    <div class="kpi amber"><div class="kpi-val" id="d-rt">0</div><div class="kpi-lbl">Riesgo trabajo</div></div>
+    <div class="kpi red"><div class="kpi-val" id="d-top">—</div><div class="kpi-lbl">Sistema top</div></div>
+  </div>
+  <!-- Charts -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px">
+    <div class="card card-p">
+      <div class="card-title" id="d-chart-title">📈 Consultas por período</div>
+      <div class="chart-wrap"><canvas id="ch-main"></canvas></div>
+    </div>
+    <div class="card card-p">
+      <div class="card-title">🫀 Top sistemas</div>
+      <div class="chart-wrap"><canvas id="ch-sis"></canvas></div>
+    </div>
+  </div>
+  <!-- Diagnósticos por sistema -->
+  <div class="card card-p" style="margin-bottom:12px">
+    <div class="card-title">🔬 Diagnósticos por aparatos y sistemas</div>
+    <div id="d-diag-bars"></div>
+  </div>
+  <!-- Por planta -->
+  <div>
+    <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">📊 Comparativo por planta</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+      <div class="card card-p" id="dp-americas"><div class="card-title">🏭 Américas</div><div class="chart-wrap" style="height:130px"><canvas id="ch-p-americas"></canvas></div><div id="kpi-p-americas" style="font-size:11px;color:var(--tx3);margin-top:5px;text-align:center"></div></div>
+      <div class="card card-p" id="dp-barrancas"><div class="card-title">🏭 Barrancas</div><div class="chart-wrap" style="height:130px"><canvas id="ch-p-barrancas"></canvas></div><div id="kpi-p-barrancas" style="font-size:11px;color:var(--tx3);margin-top:5px;text-align:center"></div></div>
+      <div class="card card-p" id="dp-cantera"><div class="card-title">🏭 Cantera</div><div class="chart-wrap" style="height:130px"><canvas id="ch-p-cantera"></canvas></div><div id="kpi-p-cantera" style="font-size:11px;color:var(--tx3);margin-top:5px;text-align:center"></div></div>
+      <div class="card card-p" id="dp-juventud"><div class="card-title">🏭 Juventud</div><div class="chart-wrap" style="height:130px"><canvas id="ch-p-juventud"></canvas></div><div id="kpi-p-juventud" style="font-size:11px;color:var(--tx3);margin-top:5px;text-align:center"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ENFERMERÍA (solo lectura + edición médico)
+══════════════════════════════════════════════════════ -->
+<div class="sc" id="sc-enf">
+  <div class="sec-hd">
+    <div><h2>Registros de Enfermería</h2><p>Vista del médico — puede editar y corregir</p></div>
+    <button class="btn btn-ghost btn-sm" onclick="syncEnf()">🔄 Sync</button>
+  </div>
+  <div class="filters">
+    <div class="search-wrap" style="flex:1;min-width:180px">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="enf-q" placeholder="Nombre, diagnóstico..." oninput="renderEnfLista()">
+    </div>
+    <select id="enf-planta" onchange="renderEnfLista()">
+      <option value="">Todas las plantas</option>
+      <option>Américas</option><option>Barrancas</option><option>Cantera</option><option>Juventud</option>
+    </select>
+    <select id="enf-mes" onchange="renderEnfLista()"><option value="">Todos los meses</option></select>
+  </div>
+  <div id="enf-lista"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     NUTRIOLOGÍA (solo lectura)
+══════════════════════════════════════════════════════ -->
+<div class="sc" id="sc-nut">
+  <div class="sec-hd">
+    <div><h2>Nutriología</h2><p>Registros y seguimiento nutricional</p></div>
+    <button class="btn btn-ghost btn-sm" onclick="syncNut()">🔄 Sync</button>
+  </div>
+  <div class="filters">
+    <div class="search-wrap" style="flex:1;min-width:180px">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="nut-q" placeholder="Nombre..." oninput="renderNutLista()">
+    </div>
+  </div>
+  <div id="nut-lista"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     EXPEDIENTE
+══════════════════════════════════════════════════════ -->
+<div class="sc" id="sc-exp">
+  <div class="sec-hd">
+    <div><h2>Expediente del Empleado</h2><p>Historial completo de salud</p></div>
+  </div>
+  <div class="card card-p" style="margin-bottom:14px">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="exp-q" placeholder="No. empleado o nombre..."
+        oninput="buscarExp(this.value)" autocomplete="off">
+      <div class="search-results" id="exp-results"></div>
+    </div>
+  </div>
+  <div id="exp-content" style="display:none">
+    <div id="exp-emp-card" class="emp-card"></div>
+    <div class="tabs" id="exp-tabs">
+      <button class="tab active" onclick="expTab('resumen',this)">📋 Resumen</button>
+      <button class="tab" onclick="expTab('vm',this)">👨‍⚕️ Val. Médica</button>
+      <button class="tab" onclick="expTab('enf',this)">🩺 Enfermería</button>
+      <button class="tab" onclick="expTab('nut',this)">🥗 Nutriología</button>
+    </div>
+    <div id="exp-tab-body"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     CITAS
+══════════════════════════════════════════════════════ -->
+<div class="sc" id="sc-cit">
+  <div class="sec-hd">
+    <div><h2>Citas</h2><p>Agenda médica</p></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="syncCitas()">🔄 Sync</button>
+      <button class="btn btn-navy" onclick="openModal('mo-cita')">+ Nueva cita</button>
+    </div>
+  </div>
+  <div class="filters">
+    <select id="cit-planta" onchange="renderCitas()"><option value="">Todas las plantas</option><option>Américas</option><option>Barrancas</option><option>Cantera</option><option>Juventud</option></select>
+    <select id="cit-estado" onchange="renderCitas()"><option value="">Todos los estados</option><option>Pendiente</option><option>Confirmada</option><option>Atendida</option><option>Cancelada</option></select>
+  </div>
+  <div id="cit-lista"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     HEAD COUNT
+══════════════════════════════════════════════════════ -->
+<div class="sc" id="sc-hc">
+  <div class="sec-hd">
+    <div><h2>Head Count</h2><p id="hc-count">0 empleados cargados</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" id="btn-hc-del" onclick="delHC()" style="display:none">🗑️ Limpiar HC</button>
+      <label class="btn btn-navy" style="cursor:pointer">📂 Importar Excel<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarHC(this)"></label>
+    </div>
+  </div>
+  <div id="hc-upload" style="border:2px dashed var(--bor2);border-radius:var(--radius);padding:40px;text-align:center;color:var(--tx3);margin-bottom:14px">
+    <div style="font-size:32px;margin-bottom:8px">📂</div>
+    <div style="font-size:13px;font-weight:500">Arrastra un archivo Excel o usa el botón de arriba</div>
+    <div style="font-size:11px;margin-top:4px">Columnas requeridas: No. Empleado, Nombre, Planta, Turno</div>
+  </div>
+  <div id="hc-table" style="display:none">
+    <div class="filters" style="margin-bottom:10px">
+      <div class="search-wrap" style="flex:1;min-width:180px">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Buscar..." oninput="renderHC(this.value)">
+      </div>
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th>No. Emp</th><th>Nombre</th><th>Departamento</th><th>Puesto</th><th>Planta</th><th>Turno</th><th>Género</th><th>NSS</th></tr></thead><tbody id="hc-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     USUARIOS
+══════════════════════════════════════════════════════ -->
+<div class="sc" id="sc-usr">
+  <div class="sec-hd">
+    <div><h2>Gestión de Usuarios</h2><p>Control de acceso a las 3 aplicaciones SO</p></div>
+    <button class="btn btn-navy" onclick="abrirNuevoUsuario()">+ Nuevo usuario</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="usrTab('medico',this)">🩺 Médico</button>
+    <button class="tab" onclick="usrTab('enfermeria',this)">🏥 Enfermería</button>
+    <button class="tab" onclick="usrTab('nutricion',this)">🥗 Nutriología</button>
+  </div>
+  <div id="usr-lista"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL — NUEVA VALORACIÓN MÉDICA
+══════════════════════════════════════════════════════ -->
+<div class="ov" id="mo-vm">
+  <div class="mo" style="max-width:780px">
+    <div class="mo-head">
+      <div>
+        <div class="mo-title">📋 Valoración Médica</div>
+        <span class="folio" id="vm-folio">VM-000000</span>
+      </div>
+      <button class="mo-close" onclick="closeModal('mo-vm')">✕</button>
+    </div>
+    <div class="mo-body">
+      <!-- Buscador empleado -->
+      <div class="vm-section">
+        <div class="vm-section-title">👤 Paciente</div>
+        <div class="search-wrap" style="margin-bottom:10px">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="vm-ne" placeholder="No. empleado — escribe para autorellenar..."
+            style="font-size:15px;font-weight:600;letter-spacing:2px"
+            oninput="buscarEmpVM(this.value)" autocomplete="off">
+          <div class="search-results" id="vm-emp-results"></div>
+        </div>
+        <div id="vm-emp-card-box" style="display:none"></div>
+        <div id="vm-ant-box" style="display:none"></div>
+        <div class="g3">
+          <div class="fi" style="margin:0"><label>Nombre</label><input id="vm-nombre" readonly placeholder="Automático"></div>
+          <div class="fi" style="margin:0"><label>Planta</label><input id="vm-planta" readonly placeholder="Automático"></div>
+          <div class="fi" style="margin:0"><label>Turno</label><input id="vm-turno" readonly placeholder="Automático"></div>
+          <div class="fi" style="margin:0"><label>Departamento</label><input id="vm-depto" readonly placeholder="Automático"></div>
+          <div class="fi" style="margin:0"><label>Puesto</label><input id="vm-puesto" readonly placeholder="Automático"></div>
+          <div class="fi" style="margin:0"><label>NSS</label><input id="vm-nss" readonly placeholder="Automático"></div>
+        </div>
+        <!-- Hidden fields -->
+        <input type="hidden" id="vm-noEmp"><input type="hidden" id="vm-genero">
+      </div>
+      <!-- Signos vitales -->
+      <div class="vm-section">
+        <div class="vm-section-title">💓 Signos Vitales</div>
+        <div class="vitals-grid">
+          <div class="vital-item"><label>T/A</label><input id="vm-ta" placeholder="120/80"></div>
+          <div class="vital-item"><label>FC /min</label><input id="vm-fc" type="number" placeholder="72"></div>
+          <div class="vital-item"><label>FR /min</label><input id="vm-fr" type="number" placeholder="16"></div>
+          <div class="vital-item"><label>Temp °C</label><input id="vm-temp" type="number" step="0.1" placeholder="36.5"></div>
+          <div class="vital-item"><label>Peso kg</label><input id="vm-peso" type="number" step="0.1" placeholder="70" oninput="calcIMC()"></div>
+          <div class="vital-item"><label>Talla cm</label><input id="vm-talla" type="number" placeholder="170" oninput="calcIMC()"></div>
+          <div class="vital-item"><label>SpO₂ %</label><input id="vm-spo2" type="number" placeholder="98"></div>
+          <div class="vital-item"><label>Glucosa</label><input id="vm-gluc" type="number" placeholder="90"></div>
+          <div class="vital-item"><label>IMC</label><input id="vm-imc" readonly style="background:var(--surf3)"></div>
+        </div>
+      </div>
+      <!-- Motivo -->
+      <div class="vm-section">
+        <div class="vm-section-title">📝 Motivo de Consulta</div>
+        <textarea id="vm-motivo" placeholder="Inicio, duración, características, síntomas asociados..." rows="3"></textarea>
+      </div>
+      <!-- Exploración por aparatos -->
+      <div class="vm-section">
+        <div class="vm-section-title">🔬 Exploración por Aparatos y Sistemas</div>
+        <div class="ap-grid" id="ap-grid"></div>
+      </div>
+      <!-- Diagnóstico -->
+      <div class="vm-section">
+        <div class="vm-section-title">🩺 Impresión Diagnóstica</div>
+        <div class="g2">
+          <div class="fi" style="margin:0"><label>Diagnóstico principal *</label><input id="vm-dx" placeholder="Diagnóstico principal"></div>
+          <div class="fi" style="margin:0"><label>CIE-10</label><input id="vm-cie" placeholder="M54.5, J06.9..." style="text-transform:uppercase"></div>
+        </div>
+        <div class="fi" style="margin-top:8px"><label>Diagnósticos secundarios / antecedentes</label><input id="vm-dx2" placeholder="HAS, DM2, ..."></div>
+      </div>
+      <!-- Plan -->
+      <div class="vm-section">
+        <div class="vm-section-title">💊 Plan y Tratamiento</div>
+        <textarea id="vm-plan" placeholder="Indicaciones, medicamentos, dosis..." rows="3"></textarea>
+        <div class="g3" style="margin-top:8px">
+          <div class="fi" style="margin:0"><label>Seguimiento</label>
+            <select id="vm-seg"><option>Alta</option><option>Seguimiento 24h</option><option>Seguimiento 48h</option><option>Referencia IMSS</option><option>Reposo en casa</option></select>
+          </div>
+          <div class="fi" style="margin:0"><label>Incapacidad</label>
+            <select id="vm-incap"><option>No</option><option>1 día</option><option>2 días</option><option>3 días</option><option>5 días</option><option>7 días</option><option>Otro</option></select>
+          </div>
+          <div class="fi" style="margin:0"><label>Próxima cita</label><input id="vm-proxcita" type="date"></div>
+        </div>
+      </div>
+      <!-- Médico -->
+      <div class="vm-section">
+        <div class="vm-section-title">👨‍⚕️ Médico</div>
+        <div class="g2">
+          <div class="fi" style="margin:0"><label>Médico</label><input id="vm-medico"></div>
+          <div class="fi" style="margin:0"><label>Cédula</label><input id="vm-cedula"></div>
+        </div>
+        <div class="fi"><label>Observaciones adicionales</label><textarea id="vm-obs" rows="2"></textarea></div>
+      </div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeModal('mo-vm')">Cancelar</button>
+      <button class="btn btn-navy" onclick="guardarVM()">💾 Guardar valoración</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL — VER DETALLE VM
+══════════════════════════════════════════════════════ -->
+<div class="ov" id="mo-vm-detail">
+  <div class="mo" style="max-width:700px">
+    <div class="mo-head">
+      <div class="mo-title" id="vmd-title">Detalle Valoración</div>
+      <button class="mo-close" onclick="closeModal('mo-vm-detail')">✕</button>
+    </div>
+    <div class="mo-body" id="vmd-body"></div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeModal('mo-vm-detail')">Cerrar</button>
+      <button class="btn btn-amber btn-sm" id="vmd-edit-btn" onclick="editarVM()">✏️ Editar</button>
+      <button class="btn btn-ghost btn-sm" id="vmd-print-btn" onclick="imprimirVM()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL — EDITAR NOTA (ENF / VM / NUT)
+══════════════════════════════════════════════════════ -->
+<div class="ov" id="mo-edit">
+  <div class="mo" style="max-width:500px">
+    <div class="mo-head">
+      <div class="mo-title" id="edit-title">Editar nota</div>
+      <button class="mo-close" onclick="closeModal('mo-edit')">✕</button>
+    </div>
+    <div class="mo-body" id="edit-body"></div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeModal('mo-edit')">Cancelar</button>
+      <button class="btn btn-navy" onclick="guardarEdicion()">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL — USUARIO
+══════════════════════════════════════════════════════ -->
+<div class="ov" id="mo-usr">
+  <div class="mo" style="max-width:440px">
+    <div class="mo-head">
+      <div class="mo-title" id="usr-mo-title">Nuevo usuario</div>
+      <button class="mo-close" onclick="closeModal('mo-usr')">✕</button>
+    </div>
+    <div class="mo-body">
+      <div class="g2">
+        <div class="fi" style="margin:0"><label>Nombre completo *</label><input id="u-nombre" placeholder="Nombre"></div>
+        <div class="fi" style="margin:0"><label>Usuario *</label><input id="u-user" placeholder="usuario123" autocomplete="off"></div>
+        <div class="fi" style="margin:0"><label>Contraseña *</label><input type="password" id="u-pass" placeholder="Contraseña" autocomplete="new-password"></div>
+        <div class="fi" style="margin:0"><label>App *</label>
+          <select id="u-app">
+            <option value="medico">🩺 Médico</option>
+            <option value="enfermeria">🏥 Enfermería</option>
+            <option value="nutricion">🥗 Nutriología</option>
+          </select>
+        </div>
+      </div>
+      <div style="background:var(--surf3);border-radius:8px;padding:10px;font-size:11px;color:var(--tx2);margin-top:10px">
+        <strong>Médico:</strong> Acceso completo + gestión usuarios<br>
+        <strong>Enfermería:</strong> Consultas, citas, registros<br>
+        <strong>Nutriología:</strong> Notas nutricionales, seguimiento
+      </div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeModal('mo-usr')">Cancelar</button>
+      <button class="btn btn-navy" onclick="guardarUsuario()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CITA -->
+<div class="ov" id="mo-cita">
+  <div class="mo" style="max-width:500px">
+    <div class="mo-head"><div class="mo-title">Nueva Cita</div><button class="mo-close" onclick="closeModal('mo-cita')">✕</button></div>
+    <div class="mo-body">
+      <div class="g2">
+        <div class="fi" style="margin:0"><label>No. Empleado</label><input id="c-noemp" placeholder="Número" oninput="autofillCita(this.value)"></div>
+        <div class="fi" style="margin:0"><label>Nombre *</label><input id="c-nombre" placeholder="Nombre completo"></div>
+        <div class="fi" style="margin:0"><label>Planta *</label>
+          <select id="c-planta" onchange="sugFechaCita()"><option value="">— Seleccionar —</option><option>Américas</option><option>Barrancas</option><option>Cantera</option><option>Juventud</option></select>
+        </div>
+        <div class="fi" style="margin:0"><label>Turno</label>
+          <select id="c-turno"><option value="">—</option><option>Matutino</option><option>Vespertino</option><option>Nocturno</option></select>
+        </div>
+        <div class="fi" style="margin:0"><label>Fecha *</label><input type="date" id="c-fecha"></div>
+        <div class="fi" style="margin:0"><label>Hora *</label><input type="time" id="c-hora" value="08:00"></div>
+      </div>
+      <div id="c-dia-sug" style="display:none;background:var(--blue3);color:var(--blue);border-radius:7px;padding:7px 11px;font-size:12px;margin:8px 0"></div>
+      <div class="fi"><label>Motivo *</label><input id="c-motivo" placeholder="Motivo de la consulta"></div>
+      <div class="fi"><label>Urgencia</label>
+        <select id="c-urgencia"><option>Normal</option><option>Prioritario</option><option>Urgente</option></select>
+      </div>
+      <div class="fi"><label>Notas</label><textarea id="c-notas" rows="2" placeholder="Observaciones adicionales"></textarea></div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeModal('mo-cita')">Cancelar</button>
+      <button class="btn btn-navy" onclick="guardarCita()">💾 Guardar cita</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+</div><!-- /app -->
+
+<script>
+'use strict';
+// ══════════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════════
+const GAS = 'https://script.google.com/macros/s/AKfycbwQbVvbIJJwpqrXopIUvoTP8w7nu6c6v2XdhtCqsxEtbq5IC8T9Qt9l__p1Pz1ujhsimw/exec';
+const SK = { hc:'so_hc8', re:'so_re8', ci:'so_ci8', vm:'so_vm8', nut:'so_nut1', users:'so_users_med_v1' };
+const EMPRESA = { nombre:'Teleflex', medico:'Dr. Jaime Iván Martínez Espinoza', cedula:'12021447', esp:'Medicina del Trabajo — Salud Ocupacional' };
+const PLANTAS = ['Américas','Barrancas','Cantera','Juventud'];
+const TURNOS = ['Matutino','Vespertino','Nocturno'];
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MSC = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const DIAS_PLANTA = {'Américas':'Martes','Americas':'Martes','Barrancas':'Miércoles','Cantera':'Jueves','Juventud':'Lunes'};
+const SIS = {
+  cardiovascular:{n:'Cardiovascular',c:'#1565C0',bg:'#E3F2FD'},
+  respiratorio:{n:'Respiratorio',c:'#0277BD',bg:'#E1F5FE'},
+  musculoesqueletico:{n:'Musculoesquelético',c:'#2E7D32',bg:'#E8F5E9'},
+  digestivo:{n:'Digestivo',c:'#E65100',bg:'#FFF3E0'},
+  nervioso:{n:'Nervioso',c:'#4527A0',bg:'#EDE7F6'},
+  endocrino:{n:'Endocrino/Metab.',c:'#6A1B9A',bg:'#F3E5F5'},
+  genitourinario:{n:'Genitourinario',c:'#006064',bg:'#E0F7FA'},
+  dermatologico:{n:'Dermatológico',c:'#BF360C',bg:'#FBE9E7'},
+  oftalmologico:{n:'Oftalmológico',c:'#283593',bg:'#E8EAF6'},
+  auditivo:{n:'Auditivo',c:'#004D40',bg:'#E0F2F1'},
+  psiquiatrico:{n:'Psiquiátrico',c:'#880E4F',bg:'#FCE4EC'},
+  hematologico:{n:'Hematológico',c:'#4A148C',bg:'#F3E5F5'},
+  otro:{n:'Otro',c:'#37474F',bg:'#ECEFF1'}
+};
+const APARATOS = ['Cabeza y cuello','Cardiovascular','Respiratorio','Digestivo','Genitourinario','Musculoesquelético','Neurológico','Dermatológico','Endocrino','Psiquiátrico','Oftalmológico','Auditivo'];
+
+// ── Data ──────────────────────────────────────────────────
+let HC=[], RE=[], CI=[], VM=[], NUT=[];
+let currentUser = null;
+let _vmEdit = null; // folio being edited
+let _editCtx = null; // {type, id}
+let _expEmp = null;
+let _expTab = 'resumen';
+let _usrTab = 'medico';
+let _charts = {};
+
+// ── Storage ───────────────────────────────────────────────
+const ld = k => { try{ const r=localStorage.getItem(k); return r?JSON.parse(r):null; }catch(e){return null;} };
+const sv = (k,v) => { try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+
+// ══════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════
+function initUsers(){
+  let users = ld(SK.users)||[];
+  if(!users.length){
+    users=[{id:1,nombre:'Dr. Jaime Iván Martínez',user:'admin',pass:btoa('admin123'),app:'medico',activo:true}];
+    sv(SK.users,users);
+  }
+  return users;
+}
+
+function doLogin(){
+  const u=document.getElementById('login-u').value.trim();
+  const p=document.getElementById('login-p').value;
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  if(!u||!p){showErr('Ingresa usuario y contraseña');return;}
+  const users=initUsers();
+  const found=users.find(x=>x.user===u&&x.pass===btoa(p)&&x.activo!==false&&x.app==='medico');
+  if(!found){showErr('Usuario o contraseña incorrectos');document.getElementById('login-p').value='';return;}
+  currentUser=found;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('nav-user').textContent=found.nombre;
+  init();
+}
+function showErr(msg){const e=document.getElementById('login-err');e.textContent=msg;e.style.display='block';}
+function doLogout(){currentUser=null;location.reload();}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+function init(){
+  HC = ld(SK.hc)||[]; RE = ld(SK.re)||[]; CI = ld(SK.ci)||[]; VM = ld(SK.vm)||[]; NUT = ld(SK.nut)||[];
+  buildApGrid();
+  populateVMFilters();
+  document.getElementById('vm-medico').value = EMPRESA.medico;
+  document.getElementById('vm-cedula').value = EMPRESA.cedula;
+  renderVMLista();
+  updateBadges();
+  if(HC.length){ document.getElementById('hc-upload').style.display='none'; document.getElementById('hc-table').style.display='block'; renderHC(''); document.getElementById('btn-hc-del').style.display=''; }
+}
+
+function updateBadges(){
+  document.getElementById('bc-cit').textContent = CI.filter(c=>c.estado==='Pendiente').length;
+}
+
+function go(id){
+  document.querySelectorAll('.sc').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+  const sc=document.getElementById('sc-'+id); if(sc) sc.classList.add('on');
+  const tb=document.getElementById('tb-'+id); if(tb) tb.classList.add('on');
+  if(id==='dash') renderDash();
+  if(id==='vm') renderVMLista();
+  if(id==='enf'){buildEnfMes();renderEnfLista();}
+  if(id==='nut') renderNutLista();
+  if(id==='cit') renderCitas();
+  if(id==='hc'&&HC.length) renderHC('');
+  if(id==='usr') renderUsrLista();
+}
+
+// ══════════════════════════════════════════════════════════
+// GAS NETWORK
+// ══════════════════════════════════════════════════════════
+async function gasGet(params){
+  try{
+    const url=GAS+'?'+Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+    const ctrl=new AbortController(); setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(url,{signal:ctrl.signal});
+    return await r.json();
+  }catch(e){return{ok:false,error:e.message};}
+}
+async function gasPost(body){
+  try{
+    const ctrl=new AbortController(); setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(GAS,{method:'POST',body:JSON.stringify(body),signal:ctrl.signal});
+    return await r.json();
+  }catch(e){return{ok:false,error:e.message};}
+}
+function setSyncDot(state){
+  const d=document.getElementById('sync-dot');
+  const l=document.getElementById('sync-lbl');
+  if(!d) return;
+  d.className='dot dot-'+state;
+  l.textContent=state==='ok'?'Sync OK':state==='busy'?'Sincronizando...':'Sin conexión';
+}
+
+async function syncVM(){
+  setSyncDot('busy');
+  try{
+    const r=await gasGet({action:'getValMedicas'});
+    if(r.ok&&Array.isArray(r.data)){ VM=r.data.filter(x=>x&&x.folio); sv(SK.vm,VM); renderVMLista(); setSyncDot('ok'); toast('Valoraciones sincronizadas','ok'); }
+    else { setSyncDot('err'); toast('Error de sync','err'); }
+  }catch(e){setSyncDot('err');}
+}
+async function syncEnf(){
+  setSyncDot('busy');
+  const r=await gasGet({action:'getRegistros'});
+  if(r.ok&&Array.isArray(r.data)){ RE=r.data; sv(SK.re,RE); renderEnfLista(); setSyncDot('ok'); toast('Registros enfermería sincronizados','ok'); }
+  else { setSyncDot('err'); toast('Error de sync','err'); }
+}
+async function syncNut(){
+  setSyncDot('busy');
+  const r=await gasGet({action:'getNut'});
+  if(r.ok&&Array.isArray(r.data)){ NUT=r.data; sv(SK.nut,NUT); renderNutLista(); setSyncDot('ok'); toast('Nutrición sincronizada','ok'); }
+  else setSyncDot('err');
+}
+async function syncCitas(){
+  setSyncDot('busy');
+  const r=await gasGet({action:'getCitas'});
+  if(r.ok&&Array.isArray(r.data)){ CI=r.data; sv(SK.ci,CI); renderCitas(); updateBadges(); setSyncDot('ok'); toast('Citas sincronizadas','ok'); }
+  else setSyncDot('err');
+}
+async function syncAll(){ await Promise.all([syncVM(),syncEnf(),syncNut(),syncCitas()]); }
+
+// ══════════════════════════════════════════════════════════
+// VALORACIONES MÉDICAS
+// ══════════════════════════════════════════════════════════
+function buildApGrid(){
+  const g=document.getElementById('ap-grid');
+  if(!g) return;
+  g.innerHTML=APARATOS.map(a=>{
+    const k=a.replace(/\s+/g,'-');
+    return `<div class="ap-item">
+      <label>${a}</label>
+      <div class="ap-row">
+        <select id="ap-${k}" style="padding:5px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:12px;font-family:inherit;outline:none">
+          <option>Normal</option><option>Anormal</option><option>No explorado</option>
+        </select>
+        <input id="apn-${k}" type="text" placeholder="Nota..." style="padding:5px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:12px;font-family:inherit;outline:none">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function populateVMFilters(){
+  const mf=document.getElementById('vm-fil-mes');
+  if(!mf) return;
+  const meses=[...new Set(VM.map(r=>r.mes||'').filter(Boolean))];
+  mf.innerHTML='<option value="">Todos los meses</option>'+meses.map(m=>`<option>${m}</option>`).join('');
+}
+
+function abrirNuevaVM(){
+  _vmEdit=null;
+  const folio='VM-'+Date.now().toString().slice(-6);
+  document.getElementById('vm-folio').textContent=folio;
+  // Clear fields
+  ['vm-ne','vm-nombre','vm-planta','vm-turno','vm-depto','vm-puesto','vm-nss',
+   'vm-noEmp','vm-genero','vm-ta','vm-fc','vm-fr','vm-temp','vm-peso','vm-talla',
+   'vm-spo2','vm-gluc','vm-imc','vm-motivo','vm-dx','vm-cie','vm-dx2','vm-plan',
+   'vm-proxcita','vm-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const sv2=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
+  sv2('vm-seg','Alta'); sv2('vm-incap','No');
+  sv2('vm-medico',EMPRESA.medico); sv2('vm-cedula',EMPRESA.cedula);
+  const ec=document.getElementById('vm-emp-card-box'); if(ec) ec.style.display='none';
+  const ab=document.getElementById('vm-ant-box'); if(ab) ab.style.display='none';
+  APARATOS.forEach(a=>{
+    const k=a.replace(/\s+/g,'-');
+    const ae=document.getElementById('ap-'+k); if(ae) ae.value='Normal';
+    const ane=document.getElementById('apn-'+k); if(ane) ane.value='';
+  });
+  document.getElementById('vm-emp-results').classList.remove('show');
+  openModal('mo-vm');
+}
+
+function buscarEmpVM(val){
+  val=(val||'').trim();
+  const res=document.getElementById('vm-emp-results');
+  if(!val||val.length<2){res.classList.remove('show');return;}
+  const lc=val.toLowerCase();
+  const matches=HC.filter(e=>String(e.noEmp||'').toLowerCase().includes(lc)||String(e.nombre||'').toLowerCase().includes(lc)).slice(0,6);
+  if(!matches.length){res.classList.remove('show');return;}
+  res.innerHTML=matches.map(e=>`
+    <div class="search-item" onclick="selEmpVM('${e.noEmp}')">
+      <div class="search-item-name">${e.nombre}</div>
+      <div class="search-item-meta">No.${e.noEmp} · ${e.planta||'—'} · ${e.turno||'—'}</div>
+    </div>`).join('');
+  res.classList.add('show');
+}
+
+function selEmpVM(noEmp){
+  const e=HC.find(x=>String(x.noEmp)===String(noEmp));
+  if(!e) return;
+  const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  sv2('vm-ne',e.noEmp); sv2('vm-noEmp',e.noEmp);
+  sv2('vm-nombre',e.nombre); sv2('vm-planta',e.planta); sv2('vm-turno',e.turno);
+  sv2('vm-depto',e.depto); sv2('vm-puesto',e.puesto); sv2('vm-nss',e.nss); sv2('vm-genero',e.genero);
+  document.getElementById('vm-emp-results').classList.remove('show');
+  // Employee card
+  const ec=document.getElementById('vm-emp-card-box');
+  if(ec){
+    ec.innerHTML=`<div class="emp-card" style="margin-bottom:10px">
+      <div class="emp-card-name">${e.nombre} <span class="emp-card-tag">No. ${e.noEmp}</span></div>
+      <div class="emp-card-grid">
+        <div class="emp-card-field"><label>Planta</label><div>${e.planta||'—'}</div></div>
+        <div class="emp-card-field"><label>Turno</label><div>${e.turno||'—'}</div></div>
+        <div class="emp-card-field"><label>Depto</label><div>${e.depto||'—'}</div></div>
+        <div class="emp-card-field"><label>Puesto</label><div>${e.puesto||'—'}</div></div>
+      </div>
+    </div>`;
+    ec.style.display='block';
+  }
+  mostrarAntVM(noEmp);
+}
+
+function mostrarAntVM(noEmp){
+  const lc=String(noEmp||'').toLowerCase();
+  const vms=VM.filter(r=>String(r.noEmp||'').toLowerCase()===lc);
+  const enfs=RE.filter(r=>String(r.noEmp||'').toLowerCase()===lc);
+  const alArr=[], cronicos=[];
+  [...vms,...enfs].forEach(r=>{
+    if(r.alergias) r.alergias.split(/[,;]+/).forEach(a=>{a=a.trim();if(a&&!alArr.includes(a))alArr.push(a);});
+  });
+  vms.forEach(r=>{
+    [r.dx2,r.antecedentesPersonales].forEach(c=>{
+      if(c) c.split(/[,;\n]+/).forEach(x=>{x=x.trim();if(x&&!cronicos.includes(x))cronicos.push(x);});
+    });
+  });
+  const ab=document.getElementById('vm-ant-box');
+  if(!ab) return;
+  let html='';
+  if(alArr.length){
+    html+=`<div class="ant-box ant-alergias">
+      <div class="ant-title" style="color:#DC2626">⚠️ Alergias registradas</div>
+      ${alArr.map(a=>`<span class="ant-tag" style="background:#FEE2E2;color:#991B1B">${a}</span>`).join('')}
+    </div>`;
+  }
+  if(cronicos.length){
+    html+=`<div class="ant-box ant-cronicos">
+      <div class="ant-title" style="color:#92400E">📋 Antecedentes / Enf. crónicas</div>
+      ${cronicos.map(c=>`<span class="ant-tag" style="background:#FEF3C7;color:#92400E">${c}</span>`).join('')}
+    </div>`;
+  }
+  if(html){ab.innerHTML=html;ab.style.display='block';}
+  else ab.style.display='none';
+}
+
+function calcIMC(){
+  const p=parseFloat(document.getElementById('vm-peso').value);
+  const t=parseFloat(document.getElementById('vm-talla').value)/100;
+  const el=document.getElementById('vm-imc');
+  if(!el) return;
+  if(p&&t&&t>0){
+    const imc=(p/(t*t)).toFixed(1);
+    const cat=imc<18.5?'Bajo peso':imc<25?'Normal':imc<30?'Sobrepeso':'Obesidad';
+    el.value=`${imc} — ${cat}`;
+  } else el.value='';
+}
+
+function getFormVM(){
+  const g=id=>{ const e=document.getElementById(id); return e?e.value.trim():''; };
+  const aps={};
+  APARATOS.forEach(a=>{
+    const k=a.replace(/\s+/g,'-');
+    const ae=document.getElementById('ap-'+k); const ane=document.getElementById('apn-'+k);
+    aps[a]={val:ae?ae.value:'Normal',nota:ane?ane.value:''};
+  });
+  return { aps,
+    noEmp:g('vm-noEmp')||g('vm-ne'), nombre:g('vm-nombre'), planta:g('vm-planta'), turno:g('vm-turno'),
+    depto:g('vm-depto'), puesto:g('vm-puesto'), nss:g('vm-nss'), genero:g('vm-genero'),
+    ta:g('vm-ta'), fc:g('vm-fc'), fr:g('vm-fr'), temp:g('vm-temp'), peso:g('vm-peso'),
+    talla:g('vm-talla'), spo2:g('vm-spo2'), glucosa:g('vm-gluc'), imc:g('vm-imc'),
+    motivoConsulta:g('vm-motivo'), diagnostico:g('vm-dx'), cie10:g('vm-cie'), dx2:g('vm-dx2'),
+    plan:g('vm-plan'), seguimiento:g('vm-seg'), incapacidad:g('vm-incap'),
+    proxCita:g('vm-proxcita'), obs:g('vm-obs'),
+    medico:g('vm-medico'), cedula:g('vm-cedula')
+  };
+}
+
+async function guardarVM(){
+  const data=getFormVM();
+  if(!data.diagnostico){toast('El diagnóstico es obligatorio','err');return;}
+  const ahora=new Date();
+  const folio=_vmEdit||document.getElementById('vm-folio').textContent;
+  const val={
+    ...data, folio,
+    fecha:ahora.toLocaleDateString('es-MX'),
+    hora:ahora.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+    mes:MESES[ahora.getMonth()], mesNum:ahora.getMonth()+1, anio:ahora.getFullYear(),
+    semana:getWeek(ahora)
+  };
+  if(_vmEdit){ const idx=VM.findIndex(x=>x.folio===_vmEdit); if(idx>=0) VM[idx]=val; }
+  else VM.push(val);
+  sv(SK.vm,VM); populateVMFilters(); renderVMLista(); updateBadges();
+  closeModal('mo-vm');
+  toast('Guardando...','inf'); setSyncDot('busy');
+  const r=await gasPost({action:'saveValMedica',val});
+  setSyncDot(r.ok?'ok':'err');
+  toast(r.ok?'✅ Valoración guardada — '+val.nombre:'⚠️ Guardado local, sin conexión','ok');
+  _vmEdit=null;
+}
+
+function renderVMLista(q){
+  q=(q||(document.querySelector('#sc-vm .search-wrap input')||{}).value||'').toLowerCase();
+  const fp=(document.getElementById('vm-fil-planta')||{}).value||'';
+  const fm=(document.getElementById('vm-fil-mes')||{}).value||'';
+  let lista=[...VM].reverse();
+  if(q) lista=lista.filter(r=>(r.nombre+r.diagnostico+r.noEmp).toLowerCase().includes(q));
+  if(fp) lista=lista.filter(r=>r.planta===fp||r.planta==='Americas'&&fp==='Américas');
+  if(fm) lista=lista.filter(r=>r.mes===fm);
+  const el=document.getElementById('vm-lista');
+  if(!lista.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">${VM.length?'Sin resultados para los filtros':'Sin valoraciones. Haz clic en + Nueva valoración'}</div></div>`;return;}
+  el.innerHTML=lista.map(r=>{
+    const s=SIS[r.sistema]||SIS.otro;
+    return `<div class="card card-p" style="margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-weight:700;font-size:14px">${r.diagnostico||'Sin diagnóstico'}</span>
+            ${r.dx2?`<span class="pill pill-amber">${r.dx2}</span>`:''}
+          </div>
+          <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">
+            <strong>${r.nombre||'—'}</strong> · No.${r.noEmp||'—'} · ${r.planta||'—'} · ${r.turno||'—'}
+          </div>
+          <div style="font-size:11px;color:var(--tx3)">
+            📅 ${r.fecha||'—'} ${r.hora?'· '+r.hora:''} · <span class="folio">${r.folio}</span>
+            ${r.seguimiento?` · <span class="pill pill-blue">${r.seguimiento}</span>`:''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+          <button class="btn btn-ghost btn-xs" onclick="verVM('${r.folio}')">👁️ Ver</button>
+          <button class="btn btn-ghost btn-xs" onclick="editVM('${r.folio}')">✏️ Editar</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function verVM(folio){
+  const r=VM.find(x=>x.folio===folio); if(!r) return;
+  document.getElementById('vmd-title').textContent='Valoración — '+r.nombre;
+  const aps=r.aps||{};
+  const apHtml=Object.entries(aps).filter(([,v])=>v.val&&v.val!=='Normal').map(([k,v])=>
+    `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--bor);font-size:12px">
+      <span style="font-weight:600;min-width:130px">${k}</span>
+      <span class="pill pill-amber">${v.val}</span>
+      ${v.nota?`<span style="color:var(--tx2)">${v.nota}</span>`:''}
+    </div>`).join('');
+  document.getElementById('vmd-body').innerHTML=`
+    <div class="emp-card" style="margin-bottom:12px">
+      <div class="emp-card-name">${r.nombre||'—'} <span class="emp-card-tag">No.${r.noEmp||'—'}</span></div>
+      <div class="emp-card-grid">
+        <div class="emp-card-field"><label>Planta</label><div>${r.planta||'—'}</div></div>
+        <div class="emp-card-field"><label>Turno</label><div>${r.turno||'—'}</div></div>
+        <div class="emp-card-field"><label>Fecha</label><div>${r.fecha||'—'}</div></div>
+        <div class="emp-card-field"><label>Folio</label><div>${r.folio}</div></div>
+      </div>
+    </div>
+    <div class="g4" style="margin-bottom:12px">
+      ${[['T/A',r.ta],['FC',r.fc],['FR',r.fr],['Temp',r.temp],['Peso',r.peso?r.peso+'kg':'—'],['Talla',r.talla?r.talla+'cm':'—'],['SpO₂',r.spo2?r.spo2+'%':'—'],['Glucosa',r.glucosa]].map(([l,v])=>
+        v?`<div style="background:var(--surf3);border-radius:7px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--tx3);text-transform:uppercase">${l}</div><div style="font-weight:700;font-size:14px">${v}</div></div>`:''
+      ).join('')}
+    </div>
+    ${r.motivoConsulta?`<div class="vm-section"><div class="vm-section-title">📝 Motivo</div><p style="font-size:13px;color:var(--tx)">${r.motivoConsulta}</p></div>`:''}
+    <div class="vm-section">
+      <div class="vm-section-title">🩺 Diagnóstico</div>
+      <p style="font-weight:600;font-size:14px">${r.diagnostico}</p>
+      ${r.cie10?`<p style="font-size:12px;color:var(--tx2)">CIE-10: ${r.cie10}</p>`:''}
+      ${r.dx2?`<p style="font-size:12px;color:var(--tx2)">Secundarios: ${r.dx2}</p>`:''}
+    </div>
+    ${r.plan?`<div class="vm-section"><div class="vm-section-title">💊 Plan</div><p style="font-size:13px">${r.plan}</p></div>`:''}
+    ${apHtml?`<div class="vm-section"><div class="vm-section-title">🔬 Exploración (hallazgos)</div>${apHtml}</div>`:''}
+    <div style="font-size:11px;color:var(--tx3);margin-top:12px">${r.medico||EMPRESA.medico} · Cédula: ${r.cedula||EMPRESA.cedula}</div>
+  `;
+  document.getElementById('vmd-edit-btn').setAttribute('data-folio',folio);
+  openModal('mo-vm-detail');
+}
+function editarVM(){ const f=document.getElementById('vmd-edit-btn').getAttribute('data-folio'); closeModal('mo-vm-detail'); editVM(f); }
+
+function editVM(folio){
+  const r=VM.find(x=>x.folio===folio); if(!r) return;
+  _vmEdit=folio;
+  abrirNuevaVM();
+  // Fill fields
+  const sv2=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
+  document.getElementById('vm-folio').textContent=folio;
+  sv2('vm-ne',r.noEmp); sv2('vm-noEmp',r.noEmp); sv2('vm-nombre',r.nombre); sv2('vm-planta',r.planta);
+  sv2('vm-turno',r.turno); sv2('vm-depto',r.depto); sv2('vm-puesto',r.puesto); sv2('vm-nss',r.nss);
+  sv2('vm-ta',r.ta); sv2('vm-fc',r.fc); sv2('vm-fr',r.fr); sv2('vm-temp',r.temp);
+  sv2('vm-peso',r.peso); sv2('vm-talla',r.talla); sv2('vm-spo2',r.spo2); sv2('vm-gluc',r.glucosa);
+  sv2('vm-imc',r.imc); sv2('vm-motivo',r.motivoConsulta); sv2('vm-dx',r.diagnostico);
+  sv2('vm-cie',r.cie10); sv2('vm-dx2',r.dx2); sv2('vm-plan',r.plan);
+  sv2('vm-seg',r.seguimiento||'Alta'); sv2('vm-incap',r.incapacidad||'No');
+  sv2('vm-proxcita',r.proxCita); sv2('vm-obs',r.obs);
+  if(r.aps) Object.entries(r.aps).forEach(([k,v])=>{
+    const ae=document.getElementById('ap-'+k.replace(/\s+/g,'-')); if(ae) ae.value=v.val||'Normal';
+    const ane=document.getElementById('apn-'+k.replace(/\s+/g,'-')); if(ane) ane.value=v.nota||'';
+  });
+}
+
+function imprimirVM(){
+  const folio=document.getElementById('vmd-edit-btn').getAttribute('data-folio');
+  const r=VM.find(x=>x.folio===folio); if(!r) return;
+  const w=window.open('','_blank','width=800,height=900');
+  if(!w){toast('Popup bloqueado — verifica el navegador','err');return;}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VM ${r.folio}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}h1{font-size:16px}table{width:100%;border-collapse:collapse;margin:8px 0}td,th{border:1px solid #ddd;padding:5px 8px}th{background:#f5f5f5}.sig{margin-top:60px;border-top:1px solid #000;width:200px;text-align:center;padding-top:4px}</style></head>
+  <body><h1>Valoración Médica — ${EMPRESA.nombre}</h1>
+  <table><tr><td><b>Folio:</b> ${r.folio}</td><td><b>Fecha:</b> ${r.fecha}</td><td><b>Hora:</b> ${r.hora||'—'}</td></tr>
+  <tr><td><b>Paciente:</b> ${r.nombre}</td><td><b>No.Emp:</b> ${r.noEmp}</td><td><b>Planta:</b> ${r.planta} — ${r.turno}</td></tr>
+  <tr><td><b>T/A:</b> ${r.ta||'—'}</td><td><b>FC:</b> ${r.fc||'—'}</td><td><b>Temp:</b> ${r.temp||'—'}°C</td></tr>
+  <tr><td><b>Peso:</b> ${r.peso||'—'}kg</td><td><b>Talla:</b> ${r.talla||'—'}cm</td><td><b>IMC:</b> ${r.imc||'—'}</td></tr></table>
+  <p><b>Motivo:</b> ${r.motivoConsulta||'—'}</p>
+  <p><b>Diagnóstico:</b> ${r.diagnostico} ${r.cie10?'('+r.cie10+')':''}</p>
+  ${r.dx2?`<p><b>Antecedentes:</b> ${r.dx2}</p>`:''}
+  <p><b>Plan:</b> ${r.plan||'—'}</p>
+  <p><b>Seguimiento:</b> ${r.seguimiento||'Alta'} | <b>Incapacidad:</b> ${r.incapacidad||'No'}</p>
+  <div class="sig">${r.medico||EMPRESA.medico}<br><small>Cédula: ${r.cedula||EMPRESA.cedula}</small></div>
+  <script>window.print();<\/script></body></html>`);
+}
+
+// ══════════════════════════════════════════════════════════
+// ENFERMERÍA (read + médico edit)
+// ══════════════════════════════════════════════════════════
+function buildEnfMes(){
+  const sel=document.getElementById('enf-mes'); if(!sel) return;
+  const meses=[...new Set(RE.map(r=>r.mes||'').filter(Boolean))];
+  sel.innerHTML='<option value="">Todos los meses</option>'+meses.map(m=>`<option>${m}</option>`).join('');
+}
+
+function renderEnfLista(){
+  const q=(document.getElementById('enf-q')||{}).value.toLowerCase()||'';
+  const fp=(document.getElementById('enf-planta')||{}).value||'';
+  const fm=(document.getElementById('enf-mes')||{}).value||'';
+  let lista=[...RE].reverse();
+  if(q) lista=lista.filter(r=>(r.nombre+r.diagnostico+r.noEmp).toLowerCase().includes(q));
+  if(fp) lista=lista.filter(r=>r.planta===fp);
+  if(fm) lista=lista.filter(r=>r.mes===fm);
+  const el=document.getElementById('enf-lista');
+  if(!lista.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🏥</div><div class="empty-text">${RE.length?'Sin resultados':'Sin registros. Usa Sync para cargar datos de enfermería'}</div></div>`;return;}
+  el.innerHTML=lista.map(r=>{
+    const s=SIS[r.sistema]||SIS.otro;
+    return `<div class="card card-p" style="margin-bottom:7px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
+            <span style="font-weight:700">${r.diagnostico||'—'}</span>
+            <span class="pill" style="background:${s.bg};color:${s.c}">${s.n}</span>
+            ${r.tipo==='Probable riesgo de trabajo'||r.tipo==='Accidente de trabajo'?`<span class="pill pill-red">⚠️ ${r.tipo}</span>`:''}
+          </div>
+          <div style="font-size:12px;color:var(--tx2)"><strong>${r.nombre||'—'}</strong> · No.${r.noEmp||'—'} · ${r.planta||'—'} · ${r.turno||'—'}</div>
+          <div style="font-size:11px;color:var(--tx3);margin-top:2px">📅 ${r.fecha||'—'} ${r.hora?'· '+r.hora:''}</div>
+          ${r.tratamiento?`<div style="font-size:11px;color:var(--tx2);margin-top:2px">Tto: ${r.tratamiento}</div>`:''}
+        </div>
+        <button class="btn btn-ghost btn-xs" onclick="editarEnf('${r.id}')">✏️ Editar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editarEnf(id){
+  const r=RE.find(x=>String(x.id)===String(id)); if(!r) return;
+  _editCtx={type:'enf',id};
+  document.getElementById('edit-title').textContent='Editar registro enfermería — '+r.nombre;
+  document.getElementById('edit-body').innerHTML=`
+    <div class="fi"><label>Diagnóstico *</label><input id="ed-dx" value="${esc(r.diagnostico)}"></div>
+    <div class="fi"><label>Tratamiento</label><input id="ed-trat" value="${esc(r.tratamiento)}"></div>
+    <div class="fi"><label>Notas clínicas</label><textarea id="ed-notas" rows="2">${esc(r.notas)}</textarea></div>
+    <div class="fi"><label>Seguimiento</label>
+      <select id="ed-seg">${['Alta','Seguimiento 24h','Seguimiento 48h','Referencia IMSS','Reposo en casa','Pendiente estudio'].map(o=>`<option${o===r.seguimiento?' selected':''}>${o}</option>`).join('')}</select>
+    </div>`;
+  openModal('mo-edit');
+}
+
+// ══════════════════════════════════════════════════════════
+// NUTRIOLOGÍA
+// ══════════════════════════════════════════════════════════
+function renderNutLista(){
+  const q=(document.getElementById('nut-q')||{}).value.toLowerCase()||'';
+  let lista=[...NUT].reverse();
+  if(q) lista=lista.filter(r=>(r.nombre+r.noEmp).toLowerCase().includes(q));
+  const el=document.getElementById('nut-lista');
+  if(!lista.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🥗</div><div class="empty-text">${NUT.length?'Sin resultados':'Sin datos de nutriología. Usa Sync'}</div></div>`;return;}
+  el.innerHTML=lista.map(r=>`
+    <div class="card card-p" style="margin-bottom:7px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:700;margin-bottom:3px">${r.diagnostico||'Sin diagnóstico'}</div>
+          <div style="font-size:12px;color:var(--tx2)">${r.nombre||'—'} · No.${r.noEmp||'—'}</div>
+          <div style="font-size:11px;color:var(--tx3);margin-top:2px">📅 ${r.fecha||'—'}
+            ${r.peso?` · Peso: ${r.peso}kg`:''} ${r.metaPeso?` → Meta: ${r.metaPeso}kg`:''}
+          </div>
+          ${r.recomendaciones?`<div style="font-size:11px;color:var(--tx2);margin-top:2px">${r.recomendaciones}</div>`:''}
+        </div>
+        <button class="btn btn-ghost btn-xs" onclick="editarNut('${r.folio}')">✏️ Editar</button>
+      </div>
+    </div>`).join('');
+}
+
+function editarNut(folio){
+  const r=NUT.find(x=>String(x.folio)===String(folio)); if(!r) return;
+  _editCtx={type:'nut',id:folio};
+  document.getElementById('edit-title').textContent='Editar nota nutricional — '+r.nombre;
+  document.getElementById('edit-body').innerHTML=`
+    <div class="fi"><label>Diagnóstico nutricional *</label><input id="ed-dx" value="${esc(r.diagnostico)}"></div>
+    <div class="fi"><label>Recomendaciones</label><textarea id="ed-rec" rows="2">${esc(r.recomendaciones)}</textarea></div>
+    <div class="fi"><label>Meta de peso (kg)</label><input id="ed-meta" type="number" value="${r.metaPeso||''}"></div>
+    <div class="fi"><label>Notas</label><textarea id="ed-notas" rows="2">${esc(r.notas)}</textarea></div>`;
+  openModal('mo-edit');
+}
+
+async function guardarEdicion(){
+  if(!_editCtx) return;
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  if(_editCtx.type==='enf'){
+    const dx=g('ed-dx'); if(!dx){toast('Diagnóstico obligatorio','err');return;}
+    const idx=RE.findIndex(x=>String(x.id)===String(_editCtx.id));
+    if(idx>=0){ RE[idx]={...RE[idx],diagnostico:dx,tratamiento:g('ed-trat'),notas:g('ed-notas'),seguimiento:g('ed-seg'),editado:new Date().toLocaleDateString('es-MX')}; sv(SK.re,RE); renderEnfLista(); }
+  } else if(_editCtx.type==='nut'){
+    const dx=g('ed-dx'); if(!dx){toast('Diagnóstico obligatorio','err');return;}
+    const idx=NUT.findIndex(x=>String(x.folio)===String(_editCtx.id));
+    if(idx>=0){ NUT[idx]={...NUT[idx],diagnostico:dx,recomendaciones:g('ed-rec'),metaPeso:g('ed-meta'),notas:g('ed-notas'),editado:new Date().toLocaleDateString('es-MX')}; sv(SK.nut,NUT); renderNutLista(); }
+  }
+  toast('✅ Actualizado','ok'); closeModal('mo-edit'); _editCtx=null;
+}
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════
+function renderDash(){
+  const yr=document.getElementById('d-yr');
+  const years=[...new Set([...RE,...VM].map(r=>r.anio||new Date().getFullYear()))].sort((a,b)=>b-a);
+  if(!years.includes(new Date().getFullYear())) years.unshift(new Date().getFullYear());
+  const curYr=parseInt(yr.value)||new Date().getFullYear();
+  yr.innerHTML=years.map(y=>`<option value="${y}"${y===curYr?' selected':''}>${y}</option>`).join('');
+  const sy=parseInt(yr.value)||new Date().getFullYear();
+  const periodo=(document.getElementById('d-periodo')||{}).value||'anio';
+  const fp=(document.getElementById('d-planta')||{}).value||'';
+  const ft=(document.getElementById('d-turno')||{}).value||'';
+  const fm=(document.getElementById('d-mes-f')||{}).value||'';
+  const mf=document.getElementById('d-mes-f');
+  if(mf) mf.style.display=periodo!=='anio'?'':'none';
+
+  const allReg=[...RE,...VM].filter(r=>{
+    if((r.anio||new Date().getFullYear())!==sy) return false;
+    if(fp&&r.planta!==fp) return false;
+    if(ft&&r.turno!==ft) return false;
+    if(fm&&r.mes!==fm) return false;
+    return true;
+  });
+  const vms=VM.filter(r=>{
+    if((r.anio||new Date().getFullYear())!==sy) return false;
+    if(fp&&r.planta!==fp) return false;
+    if(ft&&r.turno!==ft) return false;
+    return true;
+  });
+  const enfs=RE.filter(r=>{
+    if((r.anio||new Date().getFullYear())!==sy) return false;
+    if(fp&&r.planta!==fp) return false;
+    if(ft&&r.turno!==ft) return false;
+    return true;
+  });
+  const ext=enfs.filter(r=>r.tipoTrabajador==='externo');
+  const rt=enfs.filter(r=>r.tipo==='Probable riesgo de trabajo'||r.tipo==='Accidente de trabajo');
+  document.getElementById('d-tot').textContent=enfs.length;
+  document.getElementById('d-vm').textContent=vms.length;
+  document.getElementById('d-int').textContent=enfs.length-ext.length;
+  document.getElementById('d-rt').textContent=rt.length;
+  if(enfs.length){
+    const cnt={};enfs.forEach(r=>cnt[r.sistema]=(cnt[r.sistema]||0)+1);
+    const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('d-top').textContent=(SIS[top[0]]||SIS.otro).n;
+  }
+
+  // Main chart
+  let labels=MSC, valores=Array(12).fill(0);
+  if(periodo==='anio'){
+    enfs.forEach(r=>{const m=(r.mesNum||1)-1;if(m>=0&&m<12)valores[m]++;});
+    document.getElementById('d-chart-title').textContent='📈 Consultas por mes';
+  } else {
+    const meses=[...new Set(enfs.map(r=>r.mes||'').filter(Boolean))];
+    if(mf&&mf.style.display!=='none'){ mf.innerHTML='<option value="">Todos los meses</option>'+meses.map(m=>`<option>${m}</option>`).join(''); }
+    labels=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']; valores=Array(7).fill(0);
+    enfs.forEach(r=>{
+      if(!r.fecha) return;
+      const p=r.fecha.split('/'); if(p.length<3) return;
+      const d=new Date(p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0'));
+      if(!isNaN(d)) valores[d.getDay()]++;
+    });
+    document.getElementById('d-chart-title').textContent='📈 Consultas por día';
+  }
+  destroyChart('main'); 
+  _charts.main=new Chart(document.getElementById('ch-main'),{type:'bar',
+    data:{labels,datasets:[{label:'Consultas enf.',data:valores,backgroundColor:'rgba(26,86,219,.15)',borderColor:'#1A56DB',borderWidth:2,borderRadius:5},{label:'Val. médicas',data:periodo==='anio'?Array(12).fill(0).map((_,i)=>vms.filter(r=>r.mesNum===i+1).length):[],backgroundColor:'rgba(5,150,105,.15)',borderColor:'#059669',borderWidth:2,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+
+  // Sistemas chart
+  const cs={};enfs.forEach(r=>cs[r.sistema]=(cs[r.sistema]||0)+1);
+  const ts=Object.entries(cs).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  destroyChart('sis');
+  if(ts.length) _charts.sis=new Chart(document.getElementById('ch-sis'),{type:'doughnut',
+    data:{labels:ts.map(([k])=>(SIS[k]||SIS.otro).n),datasets:[{data:ts.map(([,v])=>v),backgroundColor:ts.map(([k])=>(SIS[k]||SIS.otro).c+'55'),borderColor:ts.map(([k])=>(SIS[k]||SIS.otro).c),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}}}});
+
+  // Diagnósticos bars
+  const total=enfs.length||1;
+  const sorted=Object.entries(cs).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('d-diag-bars').innerHTML=sorted.length?sorted.map(([k,v])=>{
+    const s=SIS[k]||SIS.otro; const pct=Math.round(v/total*100);
+    return `<div class="progress-row">
+      <div class="progress-label" style="color:${s.c}">${s.n}</div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${s.c}"></div></div>
+      <div class="progress-count">${v}</div>
+      <div class="progress-pct">${pct}%</div>
+    </div>`;
+  }).join(''):'<div style="color:var(--tx3);font-size:12px;text-align:center;padding:16px">Sin datos</div>';
+
+  // Por planta charts
+  if(!window._plantaCharts) window._plantaCharts={};
+  PLANTAS.forEach(p=>{
+    const pid=p.toLowerCase().replace(/[^a-z]/g,'').replace('amricas','americas');
+    const pData=RE.filter(r=>(r.anio||new Date().getFullYear())===sy&&(r.planta===p||r.planta==='Americas'&&p==='Américas'));
+    const pm=Array(12).fill(0); pData.forEach(r=>{const m=(r.mesNum||1)-1;if(m>=0&&m<12)pm[m]++;});
+    const ctx=document.getElementById('ch-p-'+p.toLowerCase().replace(/[éáóúíñ]/g,c=>({'é':'e','á':'a','ó':'o','ú':'u','í':'i','ñ':'n'}[c]||c)).replace(/[^a-z]/g,''));
+    if(!ctx) return;
+    if(window._plantaCharts[p]) window._plantaCharts[p].destroy();
+    window._plantaCharts[p]=new Chart(ctx,{type:'bar',data:{labels:MSC,datasets:[{data:pm,backgroundColor:'rgba(26,86,219,.1)',borderColor:'#1A56DB',borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:9}}},x:{ticks:{font:{size:9}}}}}});
+    const kpiEl=document.getElementById('kpi-p-'+p.toLowerCase().replace(/[éáóúíñ]/g,c=>({'é':'e','á':'a','ó':'o','ú':'u','í':'i','ñ':'n'}[c]||c)).replace(/[^a-z]/g,''));
+    if(kpiEl) kpiEl.textContent=pData.length+' consultas';
+  });
+}
+
+function destroyChart(key){ if(_charts[key]){try{_charts[key].destroy();}catch(e){} delete _charts[key];} }
+
+function exportDash(){
+  if(typeof XLSX==='undefined'){toast('XLSX no disponible','err');return;}
+  const wb=XLSX.utils.book_new();
+  const sy=parseInt(document.getElementById('d-yr').value)||new Date().getFullYear();
+  ['Todas',...PLANTAS].forEach(p=>{
+    const data=RE.filter(r=>{if((r.anio||new Date().getFullYear())!==sy)return false;if(p!=='Todas'&&r.planta!==p&&!(r.planta==='Americas'&&p==='Américas'))return false;return true;});
+    const rows=[['Fecha','Nombre','No.Emp','Planta','Turno','Diagnóstico','Sistema','Tratamiento','Seguimiento','Tipo','Mes','Año']];
+    data.forEach(r=>rows.push([r.fecha||'',r.nombre||'',r.noEmp||'',r.planta||'',r.turno||'',r.diagnostico||'',(SIS[r.sistema]||SIS.otro).n,r.tratamiento||'',r.seguimiento||'',r.tipo||'',r.mes||'',r.anio||'']));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),p.substring(0,31));
+  });
+  XLSX.writeFile(wb,'SO_Dashboard_'+sy+'.xlsx');
+  toast('✅ Excel exportado','ok');
+}
+
+// ══════════════════════════════════════════════════════════
+// EXPEDIENTE
+// ══════════════════════════════════════════════════════════
+function buscarExp(q){
+  q=(q||'').trim().toLowerCase();
+  const res=document.getElementById('exp-results');
+  if(q.length<2){res.classList.remove('show');return;}
+  const found={};
+  const add=(noEmp,nombre,planta,turno)=>{const k=String(noEmp).toLowerCase();if(!found[k])found[k]={noEmp,nombre:nombre||'—',planta:planta||'—',turno:turno||'—'};};
+  HC.forEach(e=>{if(String(e.noEmp||'').toLowerCase().includes(q)||String(e.nombre||'').toLowerCase().includes(q))add(e.noEmp,e.nombre,e.planta,e.turno);});
+  RE.forEach(r=>{if(String(r.noEmp||'').toLowerCase().includes(q)||String(r.nombre||'').toLowerCase().includes(q))add(r.noEmp,r.nombre,r.planta,r.turno);});
+  VM.forEach(r=>{if(String(r.noEmp||'').toLowerCase().includes(q)||String(r.nombre||'').toLowerCase().includes(q))add(r.noEmp,r.nombre,r.planta,r.turno);});
+  const keys=Object.keys(found);
+  if(!keys.length){res.innerHTML='<div class="search-item" style="color:var(--tx3);cursor:default">Sin resultados</div>';res.classList.add('show');return;}
+  res.innerHTML='';
+  keys.slice(0,8).forEach(k=>{
+    const e=found[k];
+    const d=document.createElement('div'); d.className='search-item';
+    d.innerHTML=`<div class="search-item-name">${e.nombre}</div><div class="search-item-meta">No.${e.noEmp} · ${e.planta} · ${e.turno}</div>`;
+    d.addEventListener('click',()=>abrirExp(e.noEmp));
+    res.appendChild(d);
+  });
+  res.classList.add('show');
+}
+
+function abrirExp(noEmp){
+  const lc=String(noEmp).toLowerCase();
+  let emp=HC.find(e=>String(e.noEmp).toLowerCase()===lc);
+  if(!emp){const r=RE.find(r=>String(r.noEmp||'').toLowerCase()===lc);if(r)emp={noEmp:r.noEmp,nombre:r.nombre,planta:r.planta,turno:r.turno,depto:r.depto,puesto:r.puesto};}
+  if(!emp){const v=VM.find(v=>String(v.noEmp||'').toLowerCase()===lc);if(v)emp={noEmp:v.noEmp,nombre:v.nombre,planta:v.planta,turno:v.turno};}
+  if(!emp) emp={noEmp,nombre:'—',planta:'—',turno:'—'};
+  _expEmp=emp;
+  document.getElementById('exp-q').value=emp.nombre;
+  document.getElementById('exp-results').classList.remove('show');
+  const card=document.getElementById('exp-emp-card');
+  card.innerHTML=`<div class="emp-card-name">${emp.nombre} <span class="emp-card-tag">No. ${emp.noEmp}</span></div>
+    <div class="emp-card-grid">
+      <div class="emp-card-field"><label>Planta</label><div>${emp.planta||'—'}</div></div>
+      <div class="emp-card-field"><label>Turno</label><div>${emp.turno||'—'}</div></div>
+      <div class="emp-card-field"><label>Depto</label><div>${emp.depto||'—'}</div></div>
+      <div class="emp-card-field"><label>Puesto</label><div>${emp.puesto||'—'}</div></div>
+    </div>`;
+  document.getElementById('exp-content').style.display='block';
+  expTab('resumen',document.querySelector('#exp-tabs .tab.active')||document.querySelector('#exp-tabs .tab'));
+}
+
+function expTab(tab,el){
+  _expTab=tab;
+  document.querySelectorAll('#exp-tabs .tab').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  else {const b=document.querySelector(`#exp-tabs .tab[onclick*="${tab}"]`);if(b)b.classList.add('active');}
+  renderExpTab();
+}
+
+function renderExpTab(){
+  if(!_expEmp) return;
+  const lc=String(_expEmp.noEmp).toLowerCase();
+  const vms=VM.filter(r=>String(r.noEmp||'').toLowerCase()===lc).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const enfs=RE.filter(r=>String(r.noEmp||'').toLowerCase()===lc).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const nuts=NUT.filter(r=>String(r.noEmp||'').toLowerCase()===lc).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const body=document.getElementById('exp-tab-body');
+
+  if(_expTab==='resumen'){
+    const alArr=[],cronicos=[];
+    [...vms,...enfs].forEach(r=>{if(r.alergias)r.alergias.split(/[,;]+/).forEach(a=>{a=a.trim();if(a&&!alArr.includes(a))alArr.push(a);});});
+    vms.forEach(r=>{[r.dx2,r.antecedentesPersonales].forEach(c=>{if(c)c.split(/[,;\n]+/).forEach(x=>{x=x.trim();if(x&&!cronicos.includes(x))cronicos.push(x);});});});
+    let html='';
+    if(alArr.length) html+=`<div class="ant-box ant-alergias"><div class="ant-title" style="color:#DC2626">⚠️ Alergias</div>${alArr.map(a=>`<span class="ant-tag" style="background:#FEE2E2;color:#991B1B">${a}</span>`).join('')}</div>`;
+    if(cronicos.length) html+=`<div class="ant-box ant-cronicos"><div class="ant-title" style="color:#92400E">📋 Enfermedades crónicas</div>${cronicos.map(c=>`<span class="ant-tag" style="background:#FEF3C7;color:#92400E">${c}</span>`).join('')}</div>`;
+    html+=`<div class="kpis" style="margin:12px 0">
+      <div class="kpi"><div class="kpi-val">${enfs.length}</div><div class="kpi-lbl">Consultas enf.</div></div>
+      <div class="kpi blue"><div class="kpi-val">${vms.length}</div><div class="kpi-lbl">Val. médicas</div></div>
+      <div class="kpi" style="color:var(--purple)"><div class="kpi-val" style="color:var(--purple)">${nuts.length}</div><div class="kpi-lbl">Notas nutric.</div></div>
+    </div>`;
+    if(vms.length){html+=`<div style="font-size:12px;font-weight:700;color:var(--tx2);margin:10px 0 6px">Últimas valoraciones médicas</div>`;vms.slice(0,3).forEach(r=>{html+=`<div style="border-left:3px solid var(--blue);padding:6px 10px;margin-bottom:5px;background:var(--surf2);border-radius:0 6px 6px 0"><span style="font-size:11px;color:var(--tx3)">${r.fecha}</span> <span style="font-weight:600">${r.diagnostico}</span>${r.dx2?` <span class="pill pill-amber" style="margin-left:4px">${r.dx2}</span>`:''}</div>`;});}
+    if(enfs.length){html+=`<div style="font-size:12px;font-weight:700;color:var(--tx2);margin:10px 0 6px">Últimas consultas enfermería</div>`;enfs.slice(0,3).forEach(r=>{const s=SIS[r.sistema]||SIS.otro;html+=`<div style="border-left:3px solid ${s.c};padding:6px 10px;margin-bottom:5px;background:var(--surf2);border-radius:0 6px 6px 0"><span style="font-size:11px;color:var(--tx3)">${r.fecha}</span> <span style="font-weight:600">${r.diagnostico}</span></div>`;});}
+    body.innerHTML=html||'<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">Sin registros para este empleado</div></div>';
+  } else if(_expTab==='vm'){
+    body.innerHTML=vms.length?vms.map(r=>`<div class="card card-p" style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px"><div><div style="font-weight:700">${r.diagnostico}</div>${r.dx2?`<div style="font-size:11px;color:var(--tx2)">${r.dx2}</div>`:''}<div style="font-size:11px;color:var(--tx3)">📅 ${r.fecha}</div></div><button class="btn btn-ghost btn-xs" onclick="verVM('${r.folio}')">👁️ Ver</button></div></div>`).join(''):
+    `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin valoraciones médicas</div></div>`;
+  } else if(_expTab==='enf'){
+    body.innerHTML=enfs.length?enfs.map(r=>{const s=SIS[r.sistema]||SIS.otro;return`<div class="card card-p" style="margin-bottom:7px"><div style="font-weight:700">${r.diagnostico}</div><div style="font-size:12px;color:var(--tx2)"><span class="pill" style="background:${s.bg};color:${s.c}">${s.n}</span></div><div style="font-size:11px;color:var(--tx3);margin-top:3px">📅 ${r.fecha}</div>${r.tratamiento?`<div style="font-size:11px;color:var(--tx2)">Tto: ${r.tratamiento}</div>`:''}</div>`;}).join(''):
+    `<div class="empty"><div class="empty-icon">🏥</div><div class="empty-text">Sin registros de enfermería</div></div>`;
+  } else if(_expTab==='nut'){
+    body.innerHTML=nuts.length?nuts.map(r=>`<div class="card card-p" style="margin-bottom:7px"><div style="font-weight:700">${r.diagnostico}</div><div style="font-size:11px;color:var(--tx3)">📅 ${r.fecha}${r.peso?' · '+r.peso+'kg':''}${r.metaPeso?' → Meta: '+r.metaPeso+'kg':''}</div>${r.recomendaciones?`<div style="font-size:11px;color:var(--tx2);margin-top:3px">${r.recomendaciones}</div>`:''}</div>`).join(''):
+    `<div class="empty"><div class="empty-icon">🥗</div><div class="empty-text">Sin notas de nutriología</div></div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// CITAS
+// ══════════════════════════════════════════════════════════
+function autofillCita(val){
+  if(!val||val.length<2) return;
+  const e=HC.find(x=>String(x.noEmp).toLowerCase()===val.toLowerCase());
+  if(e){
+    const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+    sv2('c-nombre',e.nombre); sv2('c-planta',e.planta); sv2('c-turno',e.turno);
+    sugFechaCita();
+  }
+}
+function sugFechaCita(){
+  const planta=document.getElementById('c-planta').value;
+  const dia=DIAS_PLANTA[planta]; const ds=document.getElementById('c-dia-sug');
+  if(!dia||!ds){if(ds)ds.style.display='none';return;}
+  const hoy=new Date(),dias={Lunes:1,Martes:2,'Miércoles':3,Jueves:4,Viernes:5};
+  let diff=(dias[dia]||1)-hoy.getDay(); if(diff<=0)diff+=7;
+  const fecha=new Date(hoy); fecha.setDate(hoy.getDate()+diff);
+  const iso=fecha.toISOString().split('T')[0];
+  document.getElementById('c-fecha').value=iso;
+  ds.style.display='block'; ds.textContent='📅 Día asignado para '+planta+': '+dia+'s — '+fecha.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
+}
+async function guardarCita(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const nombre=g('c-nombre'),planta=g('c-planta'),fecha=g('c-fecha'),hora=g('c-hora'),motivo=g('c-motivo');
+  if(!nombre||!planta||!fecha||!motivo){toast('Nombre, planta, fecha y motivo son obligatorios','err');return;}
+  const cita={id:Date.now(),fecha:new Date(fecha+'T12:00').toLocaleDateString('es-MX'),fechaISO:fecha,hora,
+    noEmp:g('c-noemp')||'—',nombre,planta,turno:g('c-turno'),
+    motivo,urgencia:g('c-urgencia')||'Normal',notas:g('c-notas'),
+    estado:'Pendiente',diaPlanta:DIAS_PLANTA[planta]||''};
+  CI.push(cita); sv(SK.ci,CI); renderCitas(); updateBadges(); closeModal('mo-cita');
+  toast('Guardando cita...','inf');
+  const r=await gasPost({action:'saveCita',cita});
+  toast(r.ok?'✅ Cita guardada':'⚠️ Guardada local','ok');
+}
+function renderCitas(){
+  const fp=(document.getElementById('cit-planta')||{}).value||'';
+  const fe=(document.getElementById('cit-estado')||{}).value||'';
+  let lista=[...CI].sort((a,b)=>(a.fechaISO||'').localeCompare(b.fechaISO||''));
+  if(fp) lista=lista.filter(c=>c.planta===fp);
+  if(fe) lista=lista.filter(c=>c.estado===fe);
+  const el=document.getElementById('cit-lista');
+  if(!lista.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">${CI.length?'Sin resultados':'Sin citas agendadas'}</div></div>`;return;}
+  el.innerHTML=lista.map(c=>{
+    const urgCls=c.urgencia==='Urgente'?'pill-red':c.urgencia==='Prioritario'?'pill-amber':'pill-gray';
+    const estCls=c.estado==='Atendida'?'pill-green':c.estado==='Cancelada'?'pill-red':c.estado==='Confirmada'?'pill-blue':'pill-amber';
+    return `<div class="card card-p" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-weight:700;font-size:14px">${c.nombre}</span>
+            <span class="pill ${urgCls}">${c.urgencia||'Normal'}</span>
+            <span class="pill ${estCls}">${c.estado}</span>
+          </div>
+          <div style="font-size:12px;color:var(--tx2)">No.${c.noEmp||'—'} · ${c.planta||'—'} · ${c.turno||'—'}</div>
+          <div style="font-size:12px;color:var(--navy);font-weight:600;margin-top:3px">📅 ${c.fecha} — ${c.hora||'—'}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-top:2px">Motivo: ${c.motivo}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <button class="btn btn-ghost btn-xs" onclick="cambiarEstado(${c.id},'Confirmada')">✓ Confirmar</button>
+          <button class="btn btn-green btn-xs" onclick="cambiarEstado(${c.id},'Atendida')">✅ Atendida</button>
+          <button class="btn btn-navy btn-xs" onclick="citaAVM('${c.noEmp}','${c.nombre}','${c.planta}','${c.turno}')">📋 Val. Médica</button>
+          <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="cambiarEstado(${c.id},'Cancelada')">✕ Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function cambiarEstado(id,estado){
+  const c=CI.find(x=>x.id===id);if(!c)return;
+  c.estado=estado;sv(SK.ci,CI);updateBadges();renderCitas();toast('Cita: '+estado,'ok');
+}
+function citaAVM(noEmp,nombre,planta,turno){
+  go('vm'); setTimeout(()=>{abrirNuevaVM(); setTimeout(()=>selEmpVM(noEmp),200);},100);
+}
+
+// ══════════════════════════════════════════════════════════
+// HEAD COUNT
+// ══════════════════════════════════════════════════════════
+function importarHC(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){toast('Archivo vacío','err');return;}
+      const cols=Object.keys(rows[0]);
+      const find=patterns=>cols.find(c=>patterns.some(p=>c.toLowerCase().includes(p)))||'';
+      const mapeo={noEmp:find(['no.emp','noemp','numero','num.emp']),nombre:find(['nombre']),
+        depto:find(['depto','departamento','area','área']),puesto:find(['puesto','cargo']),
+        planta:find(['planta','site']),turno:find(['turno','shift']),
+        nss:find(['nss','seguro']),genero:find(['genero','género','sexo'])};
+      HC=rows.map(r=>({
+        noEmp:String(r[mapeo.noEmp]||'').trim(),nombre:String(r[mapeo.nombre]||'').trim(),
+        depto:String(r[mapeo.depto]||'').trim(),puesto:String(r[mapeo.puesto]||'').trim(),
+        planta:String(r[mapeo.planta]||'').trim(),turno:String(r[mapeo.turno]||'').trim(),
+        nss:String(r[mapeo.nss]||'').trim(),genero:String(r[mapeo.genero]||'').trim()
+      })).filter(r=>r.noEmp&&r.nombre);
+      sv(SK.hc,HC);
+      document.getElementById('hc-upload').style.display='none';
+      document.getElementById('hc-table').style.display='block';
+      document.getElementById('btn-hc-del').style.display='';
+      renderHC('');
+      document.getElementById('hc-count').textContent=HC.length+' empleados cargados';
+      toast('✅ HC importado: '+HC.length+' empleados','ok');
+    }catch(err){toast('Error al leer el archivo: '+err.message,'err');}
+  };
+  reader.readAsBinaryString(file);
+}
+function renderHC(q){
+  q=(q||'').toLowerCase();
+  const lista=HC.filter(e=>!q||(e.nombre+e.noEmp+e.depto).toLowerCase().includes(q)).slice(0,100);
+  document.getElementById('hc-tbody').innerHTML=lista.map(e=>`
+    <tr><td><span class="folio">${e.noEmp}</span></td><td><strong>${e.nombre}</strong></td>
+    <td>${e.depto||'—'}</td><td>${e.puesto||'—'}</td><td>${e.planta||'—'}</td>
+    <td>${e.turno||'—'}</td><td>${e.genero||'—'}</td><td>${e.nss||'—'}</td></tr>`).join('');
+  document.getElementById('hc-count').textContent=HC.length+' empleados'+(q?' (filtrado)':'');
+}
+function delHC(){
+  if(!confirm('¿Eliminar el head count cargado?')) return;
+  HC=[]; sv(SK.hc,HC);
+  document.getElementById('hc-upload').style.display='block';
+  document.getElementById('hc-table').style.display='none';
+  document.getElementById('btn-hc-del').style.display='none';
+  document.getElementById('hc-count').textContent='0 empleados';
+  toast('Head count eliminado','ok');
+}
+
+// ══════════════════════════════════════════════════════════
+// USUARIOS
+// ══════════════════════════════════════════════════════════
+let _editUsr=null;
+function usrTab(tab,el){
+  _usrTab=tab;
+  document.querySelectorAll('.tabs .tab').forEach(b=>{if(b.closest('#sc-usr'))b.classList.remove('active');});
+  if(el) el.classList.add('active');
+  renderUsrLista();
+}
+function renderUsrLista(){
+  const users=initUsers().filter(u=>u.app===_usrTab);
+  const el=document.getElementById('usr-lista');
+  el.innerHTML=users.length?users.map(u=>`
+    <div class="user-row">
+      <div>
+        <div class="user-name">${u.nombre} ${!u.activo?'<span class="pill pill-red">Inactivo</span>':''}</div>
+        <div class="user-meta">@${u.user} · ${u.app}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-xs" onclick="editUsr(${u.id})">✏️</button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleUsr(${u.id})">${u.activo===false?'✅':'⛔'}</button>
+        ${u.user!=='admin'?`<button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="delUsr(${u.id})">🗑️</button>`:''}
+      </div>
+    </div>`).join(''):
+  `<div class="empty"><div class="empty-icon">👤</div><div class="empty-text">Sin usuarios en esta app</div></div>`;
+}
+function abrirNuevoUsuario(){
+  _editUsr=null;
+  document.getElementById('usr-mo-title').textContent='Nuevo usuario';
+  ['u-nombre','u-user','u-pass'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('u-app').value=_usrTab;
+  openModal('mo-usr');
+}
+function editUsr(id){
+  const u=initUsers().find(x=>x.id===id); if(!u) return;
+  _editUsr=id;
+  document.getElementById('usr-mo-title').textContent='Editar usuario';
+  document.getElementById('u-nombre').value=u.nombre;
+  document.getElementById('u-user').value=u.user;
+  document.getElementById('u-pass').value='';
+  document.getElementById('u-app').value=u.app;
+  openModal('mo-usr');
+}
+function guardarUsuario(){
+  const nombre=document.getElementById('u-nombre').value.trim();
+  const user=document.getElementById('u-user').value.trim();
+  const pass=document.getElementById('u-pass').value;
+  const app=document.getElementById('u-app').value;
+  if(!nombre||!user){toast('Nombre y usuario son obligatorios','err');return;}
+  const users=initUsers();
+  if(_editUsr){
+    const idx=users.findIndex(x=>x.id===_editUsr);
+    if(idx>=0){users[idx].nombre=nombre;users[idx].user=user;users[idx].app=app;if(pass)users[idx].pass=btoa(pass);}
+    toast('✅ Usuario actualizado','ok');
+  } else {
+    if(!pass){toast('Contraseña obligatoria','err');return;}
+    if(users.find(x=>x.user===user)){toast('Ese usuario ya existe','err');return;}
+    users.push({id:Date.now(),nombre,user,pass:btoa(pass),app,activo:true});
+    toast('✅ Usuario creado','ok');
+  }
+  sv(SK.users,users); renderUsrLista(); closeModal('mo-usr');
+}
+function toggleUsr(id){
+  const users=initUsers(); const idx=users.findIndex(x=>x.id===id);
+  if(idx>=0){if(users[idx].user==='admin'){toast('No se puede desactivar al admin','err');return;} users[idx].activo=!users[idx].activo; sv(SK.users,users); renderUsrLista();}
+}
+function delUsr(id){
+  const users=initUsers(); const u=users.find(x=>x.id===id); if(!u) return;
+  if(!confirm('¿Eliminar usuario '+u.nombre+'?')) return;
+  sv(SK.users,users.filter(x=>x.id!==id)); renderUsrLista(); toast('Usuario eliminado','ok');
+}
+
+// ══════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════
+function openModal(id){const el=document.getElementById(id);if(el)el.classList.add('open');}
+function closeModal(id){const el=document.getElementById(id);if(el)el.classList.remove('open');}
+function toast(msg,type='ok'){
+  const c=document.createElement('div');
+  c.className='toast-item t-'+(type==='err'?'err':type==='inf'?'inf':'ok');
+  c.textContent=msg; document.getElementById('toast').appendChild(c);
+  setTimeout(()=>c.remove(),3500);
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function getWeek(d){const dt=new Date(d);dt.setHours(0,0,0,0);dt.setDate(dt.getDate()+3-(dt.getDay()+6)%7);const w=new Date(dt.getFullYear(),0,4);return 1+Math.round(((dt-w)/86400000-3+(w.getDay()+6)%7)/7);}
+
+// Close dropdowns on outside click
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.search-wrap')) document.querySelectorAll('.search-results').forEach(r=>r.classList.remove('show'));
+  if(!e.target.closest('.ov')) return;
+  if(e.target.classList.contains('ov')) e.target.classList.remove('open');
+});
+
+// Global error guard
+window.addEventListener('error',e=>{console.warn('[Médico]',e.message,e.lineno);});
+window.addEventListener('unhandledrejection',e=>{console.warn('[Médico] Promise:',e.reason);});
+</script>
+</body>
+</html>
