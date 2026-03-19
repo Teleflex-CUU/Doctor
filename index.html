@@ -1929,7 +1929,11 @@ function guardarUsuario(){
     users.push({id:Date.now(),nombre,user,pass:btoa(pass),app,activo:true});
     toast('✅ Usuario creado','ok');
   }
-  sv(SK.users,users); renderUsrLista(); closeModal('mo-usr');
+  sv(SK.users,users);
+  // Sincronizar al GAS para que otras apps puedan leer los usuarios
+  gasPost({action:'saveUsers',users:users}).catch(()=>{});
+  renderUsrLista(); closeModal('mo-usr');
+  toast('✅ Usuario guardado y sincronizado','ok');
 }
 function toggleUsr(id){
   const users=initUsers(); const idx=users.findIndex(x=>x.id===id);
