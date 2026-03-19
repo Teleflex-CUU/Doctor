@@ -627,7 +627,8 @@ tr:hover td{background:var(--surf3)}
     <div class="mo-foot">
       <button class="btn btn-ghost" onclick="closeModal('mo-vm-detail')">Cerrar</button>
       <button class="btn btn-amber btn-sm" id="vmd-edit-btn" onclick="editarVM()">✏️ Editar</button>
-      <button class="btn btn-ghost btn-sm" id="vmd-print-btn" onclick="imprimirVM()">🖨️ Imprimir</button>
+      <button class="btn btn-ghost btn-sm" onclick="imprimirVM('nota')">🖨️ Nota médica</button>
+      <button class="btn btn-ghost btn-sm" onclick="imprimirVM('receta')">📄 Receta</button>
     </div>
   </div>
 </div>
@@ -1154,25 +1155,270 @@ function editVM(folio){
   });
 }
 
-function imprimirVM(){
+function imprimirVM(tipo){
   const folio=document.getElementById('vmd-edit-btn').getAttribute('data-folio');
   const r=VM.find(x=>x.folio===folio); if(!r) return;
-  const w=window.open('','_blank','width=800,height=900');
-  if(!w){toast('Popup bloqueado — verifica el navegador','err');return;}
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VM ${r.folio}</title>
-  <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}h1{font-size:16px}table{width:100%;border-collapse:collapse;margin:8px 0}td,th{border:1px solid #ddd;padding:5px 8px}th{background:#f5f5f5}.sig{margin-top:60px;border-top:1px solid #000;width:200px;text-align:center;padding-top:4px}</style></head>
-  <body><h1>Valoración Médica — ${EMPRESA.nombre}</h1>
-  <table><tr><td><b>Folio:</b> ${r.folio}</td><td><b>Fecha:</b> ${r.fecha}</td><td><b>Hora:</b> ${r.hora||'—'}</td></tr>
-  <tr><td><b>Paciente:</b> ${r.nombre}</td><td><b>No.Emp:</b> ${r.noEmp}</td><td><b>Planta:</b> ${r.planta} — ${r.turno}</td></tr>
-  <tr><td><b>T/A:</b> ${r.ta||'—'}</td><td><b>FC:</b> ${r.fc||'—'}</td><td><b>Temp:</b> ${r.temp||'—'}°C</td></tr>
-  <tr><td><b>Peso:</b> ${r.peso||'—'}kg</td><td><b>Talla:</b> ${r.talla||'—'}cm</td><td><b>IMC:</b> ${r.imc||'—'}</td></tr></table>
-  <p><b>Motivo:</b> ${r.motivoConsulta||'—'}</p>
-  <p><b>Diagnóstico:</b> ${r.diagnostico} ${r.cie10?'('+r.cie10+')':''}</p>
-  ${r.dx2?`<p><b>Antecedentes:</b> ${r.dx2}</p>`:''}
-  <p><b>Plan:</b> ${r.plan||'—'}</p>
-  <p><b>Seguimiento:</b> ${r.seguimiento||'Alta'} | <b>Incapacidad:</b> ${r.incapacidad||'No'}</p>
-  <div class="sig">${r.medico||EMPRESA.medico}<br><small>Cédula: ${r.cedula||EMPRESA.cedula}</small></div>
-  <script>window.print();<\/script></body></html>`);
+
+  // Exploración — solo hallazgos anormales
+  const aps=r.aps||{};
+  const apRows=Object.entries(aps).filter(([,v])=>v.val&&v.val!=='Normal')
+    .map(([k,v])=>`<tr><td>${k}</td><td><b>${v.val}</b></td><td>${v.nota||'—'}</td></tr>`).join('');
+
+  const medico=r.medico||EMPRESA.medico;
+  const cedula=r.cedula||EMPRESA.cedula;
+  const empresa=EMPRESA.nombre;
+
+  // ── ESTILOS COMPARTIDOS ────────────────────────────────
+  const baseStyle=`
+    @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',Arial,sans-serif;font-size:11.5px;color:#1a1a1a;background:#fff;padding:0}
+    @page{size:letter;margin:14mm 16mm}
+    @media print{body{padding:0}.no-print{display:none!important}}
+    .page{max-width:680px;margin:0 auto;padding:20px}
+    /* Header */
+    .hdr{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:10px;border-bottom:2.5px solid #0B2545;margin-bottom:14px}
+    .hdr-left h1{font-size:15px;font-weight:700;color:#0B2545;letter-spacing:-.3px}
+    .hdr-left p{font-size:10px;color:#666;margin-top:1px}
+    .hdr-right{text-align:right;font-size:10px;color:#666;line-height:1.5}
+    .hdr-right strong{font-size:12px;color:#0B2545;display:block}
+    /* Folio badge */
+    .folio-badge{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:600;color:#1D4ED8;font-family:monospace;margin-top:3px;display:inline-block}
+    /* Sección */
+    .sec{margin-bottom:12px}
+    .sec-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#64748B;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #E2E8F0}
+    /* Paciente */
+    .pac-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:7px;padding:10px}
+    .pac-field label{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#94A3B8;display:block;margin-bottom:1px}
+    .pac-field span{font-size:12px;font-weight:600;color:#0F172A}
+    /* Vitales */
+    .vitals{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:0}
+    .vital{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:6px;text-align:center}
+    .vital label{font-size:8.5px;text-transform:uppercase;letter-spacing:.3px;color:#94A3B8;display:block}
+    .vital span{font-size:13px;font-weight:700;color:#0B2545}
+    /* Texto médico */
+    .mt{background:#FAFAFA;border:1px solid #E2E8F0;border-radius:6px;padding:9px 11px;font-size:11.5px;line-height:1.55;min-height:28px}
+    .mt.dx{font-weight:700;font-size:13px;color:#0B2545;border-left:3px solid #1A56DB}
+    /* Tabla exploración */
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{background:#F1F5F9;padding:5px 8px;text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#64748B;border:1px solid #E2E8F0}
+    td{padding:5px 8px;border:1px solid #E2E8F0;vertical-align:top}
+    /* Firma */
+    .sig-zone{margin-top:30px;display:flex;justify-content:flex-end}
+    .sig-box{text-align:center;width:200px;border-top:1.5px solid #0B2545;padding-top:6px}
+    .sig-name{font-size:11px;font-weight:700;color:#0B2545}
+    .sig-meta{font-size:9px;color:#64748B;margin-top:1px}
+    /* Receta específico */
+    .rx-header{font-size:32px;font-weight:700;color:#0B2545;font-family:'Source Serif 4',serif;margin-bottom:2px}
+    .rx-line{height:1px;background:linear-gradient(to right,#0B2545,transparent);margin-bottom:12px}
+    .rx-item{padding:10px 0;border-bottom:1px dashed #E2E8F0;margin-bottom:6px}
+    .rx-item:last-child{border-bottom:none}
+    .rx-drug{font-size:14px;font-weight:700;color:#0B2545}
+    .rx-dosis{font-size:12px;color:#334155;margin-top:2px}
+    .rx-nota{font-size:11px;color:#64748B;margin-top:1px;font-style:italic}
+    .pill{display:inline-block;padding:2px 8px;border-radius:8px;font-size:9.5px;font-weight:700}
+    .pill-blue{background:#EFF6FF;color:#1D4ED8}
+    .pill-amber{background:#FFFBEB;color:#92400E}
+    .pill-red{background:#FEF2F2;color:#991B1B}
+    .print-btn{position:fixed;bottom:20px;right:20px;background:#0B2545;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+  `;
+
+  // ── PARSEAR PLAN EN MEDICAMENTOS ───────────────────────
+  function parsePlan(plan){
+    if(!plan) return [];
+    return plan.split(/\n|;/).map(l=>l.trim()).filter(Boolean).map(l=>{
+      const parts=l.split(/[-–—:]/);
+      return{drug:parts[0]?parts[0].trim():'',rest:parts.slice(1).join(' ').trim()||l};
+    });
+  }
+  const meds=parsePlan(r.plan);
+
+  let contenido='';
+
+  if(tipo==='nota'){
+    // ════════════════════════════════════════════════════
+    // NOTA DE VALORACIÓN MÉDICA
+    // ════════════════════════════════════════════════════
+    contenido=`
+    <!-- HEADER -->
+    <div class="hdr">
+      <div class="hdr-left">
+        <h1>Valoración Médica Ocupacional</h1>
+        <p>${empresa} · Salud Ocupacional · NOM-030-STPS</p>
+      </div>
+      <div class="hdr-right">
+        <strong>${medico}</strong>
+        Especialidad: ${EMPRESA.esp||'Medicina del Trabajo'}<br>
+        Cédula Profesional: ${cedula}<br>
+        <span class="folio-badge">${r.folio}</span>
+      </div>
+    </div>
+
+    <!-- PACIENTE -->
+    <div class="sec">
+      <div class="sec-title">Datos del paciente</div>
+      <div class="pac-grid">
+        <div class="pac-field"><label>Nombre</label><span>${r.nombre||'—'}</span></div>
+        <div class="pac-field"><label>No. Empleado</label><span>${r.noEmp||'—'}</span></div>
+        <div class="pac-field"><label>Fecha</label><span>${r.fecha||'—'}${r.hora?' — '+r.hora:''}</span></div>
+        <div class="pac-field"><label>Planta</label><span>${r.planta||'—'}</span></div>
+        <div class="pac-field"><label>Turno</label><span>${r.turno||'—'}</span></div>
+        <div class="pac-field"><label>Departamento</label><span>${r.depto||'—'}</span></div>
+        <div class="pac-field"><label>Puesto</label><span>${r.puesto||'—'}</span></div>
+        <div class="pac-field"><label>NSS</label><span>${r.nss||'—'}</span></div>
+        ${r.dx2?`<div class="pac-field"><label>Antecedentes</label><span>${r.dx2}</span></div>`:''}
+      </div>
+    </div>
+
+    <!-- SIGNOS VITALES -->
+    <div class="sec">
+      <div class="sec-title">Signos vitales</div>
+      <div class="vitals">
+        ${[['T/A',r.ta],['FC /min',r.fc],['FR /min',r.fr],['Temp °C',r.temp],['Peso kg',r.peso],['Talla cm',r.talla],['SpO₂ %',r.spo2],['Glucosa',r.glucosa],['IMC',r.imc?r.imc.split('—')[0].trim():'—']].filter(([,v])=>v).map(([l,v])=>`<div class="vital"><label>${l}</label><span>${v}</span></div>`).join('')}
+      </div>
+    </div>
+
+    <!-- MOTIVO -->
+    ${r.motivoConsulta?`<div class="sec"><div class="sec-title">Motivo de consulta / Padecimiento actual</div><div class="mt">${r.motivoConsulta}</div></div>`:''}
+
+    <!-- EXPLORACIÓN -->
+    ${apRows?`<div class="sec"><div class="sec-title">Exploración por aparatos y sistemas — hallazgos</div>
+      <table><thead><tr><th>Aparato / Sistema</th><th>Hallazgo</th><th>Descripción</th></tr></thead>
+      <tbody>${apRows}</tbody></table></div>`:'<div class="sec"><div class="sec-title">Exploración por aparatos y sistemas</div><div class="mt">Exploración física sin hallazgos patológicos relevantes.</div></div>'}
+
+    <!-- DIAGNÓSTICO -->
+    <div class="sec">
+      <div class="sec-title">Impresión diagnóstica</div>
+      <div class="mt dx">${r.diagnostico||'—'} ${r.cie10?'<span class="pill pill-blue">'+r.cie10+'</span>':''}</div>
+    </div>
+
+    <!-- PLAN -->
+    ${r.plan?`<div class="sec"><div class="sec-title">Plan y tratamiento</div><div class="mt">${r.plan.replace(/\n/g,'<br>')}</div></div>`:''}
+
+    <!-- SEGUIMIENTO -->
+    <div class="sec">
+      <div style="display:flex;gap:10px;align-items:center;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:7px;padding:10px">
+        <div style="flex:1"><span style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#94A3B8">Seguimiento</span><div style="font-weight:700;margin-top:2px">${r.seguimiento||'Alta'}</div></div>
+        <div style="flex:1"><span style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#94A3B8">Incapacidad</span><div style="font-weight:700;margin-top:2px">${r.incapacidad||'No'}</div></div>
+        ${r.proxCita?`<div style="flex:1"><span style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#94A3B8">Próxima cita</span><div style="font-weight:700;margin-top:2px">${r.proxCita}</div></div>`:''}
+        ${r.obs?`<div style="flex:2"><span style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#94A3B8">Observaciones</span><div style="margin-top:2px">${r.obs}</div></div>`:''}
+      </div>
+    </div>
+
+    <!-- FIRMA -->
+    <div class="sig-zone">
+      <div class="sig-box">
+        <div class="sig-name">${medico}</div>
+        <div class="sig-meta">${EMPRESA.esp||'Medicina del Trabajo'}</div>
+        <div class="sig-meta">Cédula Prof.: ${cedula}</div>
+      </div>
+    </div>
+    `;
+
+  } else {
+    // ════════════════════════════════════════════════════
+    // RECETA MÉDICA
+    // ════════════════════════════════════════════════════
+    contenido=`
+    <!-- HEADER RECETA -->
+    <div class="hdr">
+      <div class="hdr-left">
+        <div class="rx-header">℞</div>
+        <div style="font-size:9px;color:#64748B;letter-spacing:.5px;text-transform:uppercase;margin-top:-2px">Receta Médica</div>
+      </div>
+      <div class="hdr-right">
+        <strong>${medico}</strong>
+        ${EMPRESA.esp||'Medicina del Trabajo'}<br>
+        Cédula Profesional: ${cedula}<br>
+        ${empresa} · Salud Ocupacional<br>
+        <span class="folio-badge">${r.folio}</span>
+      </div>
+    </div>
+    <div class="rx-line"></div>
+
+    <!-- PACIENTE RECETA -->
+    <div class="sec">
+      <div class="pac-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="pac-field"><label>Paciente</label><span>${r.nombre||'—'}</span></div>
+        <div class="pac-field"><label>No. Empleado</label><span>${r.noEmp||'—'}</span></div>
+        <div class="pac-field"><label>Fecha</label><span>${r.fecha||'—'}</span></div>
+        <div class="pac-field"><label>Planta / Turno</label><span>${r.planta||'—'} · ${r.turno||'—'}</span></div>
+      </div>
+    </div>
+
+    <!-- DIAGNÓSTICO RECETA -->
+    <div class="sec">
+      <div class="sec-title">Diagnóstico</div>
+      <div class="mt dx">${r.diagnostico||'—'} ${r.cie10?'<span class="pill pill-blue">'+r.cie10+'</span>':''}</div>
+    </div>
+
+    <!-- MEDICAMENTOS -->
+    <div class="sec">
+      <div class="sec-title">Medicamentos prescritos</div>
+      ${meds.length?meds.map((m,i)=>`
+        <div class="rx-item">
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span style="font-size:11px;font-weight:700;color:#64748B;min-width:20px">${i+1}.</span>
+            <div>
+              <div class="rx-drug">${m.drug||m.rest}</div>
+              ${m.drug&&m.rest?`<div class="rx-dosis">${m.rest}</div>`:''}
+            </div>
+          </div>
+        </div>`).join('')
+      :`<div class="rx-item"><div class="rx-nota" style="color:#94A3B8">— Sin medicamentos específicos prescritos —</div>
+        ${r.plan?`<div class="mt" style="margin-top:8px">${r.plan.replace(/\n/g,'<br>')}</div>`:''}</div>`}
+    </div>
+
+    <!-- INDICACIONES -->
+    ${r.obs?`<div class="sec"><div class="sec-title">Indicaciones adicionales</div><div class="mt rx-nota" style="font-style:normal">${r.obs}</div></div>`:''}
+
+    <!-- SEGUIMIENTO RECETA -->
+    <div style="display:flex;gap:10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:7px;padding:10px;margin-bottom:16px">
+      <div><span style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#94A3B8">Seguimiento</span><div style="font-weight:700">${r.seguimiento||'Alta'}</div></div>
+      <div><span style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#94A3B8">Incapacidad</span><div style="font-weight:700">${r.incapacidad||'No'}</div></div>
+      ${r.proxCita?`<div><span style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#94A3B8">Próxima cita</span><div style="font-weight:700">${r.proxCita}</div></div>`:''}
+    </div>
+
+    <!-- FIRMA RECETA -->
+    <div class="sig-zone">
+      <div class="sig-box">
+        <div class="sig-name">${medico}</div>
+        <div class="sig-meta">${EMPRESA.esp||'Medicina del Trabajo'}</div>
+        <div class="sig-meta">Cédula Prof.: ${cedula}</div>
+      </div>
+    </div>
+
+    <!-- TALÓN PACIENTE -->
+    <div style="margin-top:24px;border-top:2px dashed #CBD5E1;padding-top:12px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94A3B8;margin-bottom:6px">✂ Talón del paciente</div>
+      <div style="display:flex;gap:16px;font-size:11px">
+        <div><b>Paciente:</b> ${r.nombre||'—'}</div>
+        <div><b>Fecha:</b> ${r.fecha||'—'}</div>
+        <div><b>Dx:</b> ${r.diagnostico||'—'}</div>
+        <div><b>Seg:</b> ${r.seguimiento||'Alta'}</div>
+      </div>
+    </div>
+    `;
+  }
+
+  // ── ABRIR VENTANA ────────────────────────────────────
+  const titulo=tipo==='nota'?'Nota de Valoración Médica':'Receta Médica';
+  const w=window.open('','_blank','width=820,height=960');
+  if(!w){toast('Popup bloqueado — permite ventanas emergentes en este sitio','err');return;}
+  w.document.write(`<!DOCTYPE html><html lang="es"><head>
+    <meta charset="UTF-8">
+    <title>${titulo} — ${r.folio}</title>
+    <style>${baseStyle}</style>
+  </head><body>
+    <div class="page">${contenido}</div>
+    <button class="print-btn no-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <script>
+      // Auto-open print dialog after fonts load
+      setTimeout(function(){ if(window.matchMedia('print').matches || document.readyState==='complete') window.print(); },800);
+      document.querySelector('.print-btn').addEventListener('click',function(){window.print();});
+    <\/script>
+  </body></html>`);
+  w.document.close();
 }
 
 // ══════════════════════════════════════════════════════════
