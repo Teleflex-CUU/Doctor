@@ -250,16 +250,12 @@ tr:hover td{background:var(--surf3)}
     </div>
     <div id="login-err"></div>
     <div class="login-field">
-      <label>Usuario</label>
-      <input type="text" id="login-u" placeholder="usuario" autocomplete="username"
-        onkeydown="if(event.key==='Enter')document.getElementById('login-p').focus()">
+      <label>Selecciona tu usuario</label>
+      <select id="login-u" style="width:100%;padding:10px 13px;border:1.5px solid var(--bor);border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:.15s">
+        <option value="">— Seleccionar —</option>
+      </select>
     </div>
-    <div class="login-field">
-      <label>Contraseña</label>
-      <input type="password" id="login-p" placeholder="••••••••" autocomplete="current-password"
-        onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button class="btn-login" onclick="doLogin()">Ingresar →</button>
+    <button class="btn-login" onclick="doLogin()">Entrar →</button>
   </div>
 </div>
 
@@ -776,15 +772,21 @@ function initUsers(){
   return users;
 }
 
+function poblarSelectUsuarios(){
+  const sel=document.getElementById('login-u'); if(!sel) return;
+  const users=initUsers().filter(x=>x.activo!==false&&x.app==='medico');
+  sel.innerHTML='<option value="">— Seleccionar —</option>'
+    +users.map(u=>`<option value="${u.user}">${u.nombre}</option>`).join('');
+}
+
 function doLogin(){
-  const u=document.getElementById('login-u').value.trim();
-  const p=document.getElementById('login-p').value;
+  const u=(document.getElementById('login-u').value||'').trim();
   const err=document.getElementById('login-err');
   err.style.display='none';
-  if(!u||!p){showErr('Ingresa usuario y contraseña');return;}
+  if(!u){showErr('Selecciona tu usuario');return;}
   const users=initUsers();
-  const found=users.find(x=>x.user===u&&x.pass===btoa(p)&&x.activo!==false&&x.app==='medico');
-  if(!found){showErr('Usuario o contraseña incorrectos');document.getElementById('login-p').value='';return;}
+  const found=users.find(x=>x.user===u&&x.activo!==false&&x.app==='medico');
+  if(!found){showErr('Usuario no encontrado');return;}
   currentUser=found;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
@@ -1967,6 +1969,7 @@ document.addEventListener('click',e=>{
 });
 
 // Global error guard
+document.addEventListener('DOMContentLoaded', poblarSelectUsuarios);
 window.addEventListener('error',e=>{console.warn('[Médico]',e.message,e.lineno);});
 window.addEventListener('unhandledrejection',e=>{console.warn('[Médico] Promise:',e.reason);});
 </script>
