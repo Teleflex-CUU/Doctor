@@ -474,6 +474,7 @@ tr:hover td{background:var(--surf3)}
     <div><h2>Head Count</h2><p id="hc-count">0 empleados cargados</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" id="btn-hc-del" onclick="delHC()" style="display:none">🗑️ Limpiar HC</button>
+      <button class="btn btn-ghost btn-sm" onclick="syncHC()">🔄 Sync desde GAS</button>
       <label class="btn btn-navy" style="cursor:pointer">📂 Importar Excel<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarHC(this)"></label>
     </div>
   </div>
@@ -1868,6 +1869,28 @@ function delHC(){
   document.getElementById('btn-hc-del').style.display='none';
   document.getElementById('hc-count').textContent='0 empleados';
   toast('Head count eliminado','ok');
+}
+
+async function syncHC(){
+  setSyncDot('busy');
+  toast('Descargando Head Count...','inf');
+  try{
+    const r=await gasGet({action:'getHC'});
+    if(r.ok&&Array.isArray(r.data)&&r.data.length){
+      HC=r.data;
+      sv(SK.hc,HC);
+      document.getElementById('hc-upload').style.display='none';
+      document.getElementById('hc-table').style.display='block';
+      document.getElementById('btn-hc-del').style.display='';
+      renderHC('');
+      document.getElementById('hc-count').textContent=HC.length+' empleados cargados';
+      setSyncDot('ok');
+      toast('✅ HC sincronizado — '+HC.length+' empleados','ok');
+    } else {
+      setSyncDot('err');
+      toast('Sin datos en el GAS. Importa el Excel primero.','err');
+    }
+  }catch(e){setSyncDot('err');toast('Error de conexión','err');}
 }
 
 // ══════════════════════════════════════════════════════════
