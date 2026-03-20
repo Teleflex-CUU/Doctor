@@ -269,6 +269,7 @@ tr:hover td{background:var(--surf3)}
   <div class="nav-brand">🩺 <span>MÉDICO</span></div>
   <button class="tb on" id="tb-vm" onclick="go('vm')">📋 Valoraciones</button>
   <button class="tb" id="tb-enf" onclick="go('enf')">🏥 Enfermería</button>
+  <button class="tb" id="tb-inc" onclick="go('inc')">🏥 Incapacidades</button>
   <button class="tb" id="tb-dash" onclick="go('dash')">📊 Dashboard</button>
   <button class="tb" id="tb-exp" onclick="go('exp')">🗂️ Expediente</button>
   <button class="tb" id="tb-cit" onclick="go('cit')">📅 Citas <span class="bc" id="bc-cit">0</span></button>
@@ -318,6 +319,48 @@ tr:hover td{background:var(--surf3)}
 <!-- ══════════════════════════════════════════════════════
      DASHBOARD
 ══════════════════════════════════════════════════════ -->
+
+<!-- ══ INCAPACIDADES ══ -->
+<div class="sc" id="sc-inc">
+  <div class="sec-hd">
+    <div><h2>Incapacidades</h2><p>Vista consolidada de todas las plantas</p></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="syncInc()">🔄 Sync</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportIncMed()">📊 Excel</button>
+    </div>
+  </div>
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi red"><div class="kpi-val" id="mi-activas">0</div><div class="kpi-lbl">Activas hoy</div></div>
+    <div class="kpi amber"><div class="kpi-val" id="mi-mes">0</div><div class="kpi-lbl">Este mes</div></div>
+    <div class="kpi"><div class="kpi-val" id="mi-dias">0</div><div class="kpi-lbl">Días totales</div></div>
+    <div class="kpi blue"><div class="kpi-val" id="mi-reincorp">0</div><div class="kpi-lbl">Reincorporan en 7 días</div></div>
+  </div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="incMedTab('activas',this)">🟢 Activas</button>
+    <button class="tab" onclick="incMedTab('proximas',this)">⏰ Próxima reincorporación</button>
+    <button class="tab" onclick="incMedTab('todas',this)">📋 Historial</button>
+  </div>
+  <!-- Filtros -->
+  <div class="filters">
+    <div class="search-wrap" style="flex:1;min-width:180px">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="inc-med-q" placeholder="Nombre, No. empleado..." oninput="renderIncMed()">
+    </div>
+    <select id="inc-med-planta" onchange="renderIncMed()">
+      <option value="">Todas las plantas</option>
+      <option>Américas</option><option>Barrancas</option><option>Cantera</option><option>Juventud</option>
+    </select>
+    <select id="inc-med-tipo" onchange="renderIncMed()">
+      <option value="">Todos los tipos</option>
+      <option>Enfermedad general</option><option>Riesgo de trabajo</option>
+      <option>Riesgo de trayecto</option><option>Maternidad</option>
+    </select>
+  </div>
+  <div id="inc-med-list"></div>
+</div>
+
 <div class="sc" id="sc-dash">
   <div class="sec-hd">
     <div><h2>Dashboard SO</h2><p>NOM-030-STPS · Teleflex Ciudad Juárez</p></div>
@@ -723,7 +766,7 @@ tr:hover td{background:var(--surf3)}
 // CONSTANTS
 // ══════════════════════════════════════════════════════════
 const GAS = 'https://script.google.com/macros/s/AKfycbwQbVvbIJJwpqrXopIUvoTP8w7nu6c6v2XdhtCqsxEtbq5IC8T9Qt9l__p1Pz1ujhsimw/exec';
-const SK = { hc:'so_hc8', re:'so_re8', ci:'so_ci8', vm:'so_vm8', nut:'so_nut1', users:'so_users_med_v1' };
+const SK = { hc:'so_hc8', re:'so_re8', ci:'so_ci8', vm:'so_vm8', nut:'so_nut1', inc:'so_inc_v1', users:'so_users_med_v1' };
 const EMPRESA = { nombre:'Teleflex', medico:'Dr. Jaime Iván Martínez Espinoza', cedula:'12021447', esp:'Medicina del Trabajo — Salud Ocupacional' };
 const PLANTAS = ['Américas','Barrancas','Cantera','Juventud'];
 const TURNOS = ['Matutino','Vespertino','Nocturno'];
@@ -748,7 +791,7 @@ const SIS = {
 const APARATOS = ['Cabeza y cuello','Cardiovascular','Respiratorio','Digestivo','Genitourinario','Musculoesquelético','Neurológico','Dermatológico','Endocrino','Psiquiátrico','Oftalmológico','Auditivo'];
 
 // ── Data ──────────────────────────────────────────────────
-let HC=[], RE=[], CI=[], VM=[], NUT=[];
+let HC=[], RE=[], CI=[], VM=[], NUT=[], INC=[];
 let currentUser = null;
 let _vmEdit = null; // folio being edited
 let _editCtx = null; // {type, id}
@@ -801,7 +844,7 @@ function doLogout(){currentUser=null;location.reload();}
 // INIT
 // ══════════════════════════════════════════════════════════
 function init(){
-  HC = ld(SK.hc)||[]; RE = ld(SK.re)||[]; CI = ld(SK.ci)||[]; VM = ld(SK.vm)||[]; NUT = ld(SK.nut)||[];
+  HC = ld(SK.hc)||[]; RE = ld(SK.re)||[]; CI = ld(SK.ci)||[]; VM = ld(SK.vm)||[]; NUT = ld(SK.nut)||[]; INC = ld(SK.inc)||[];
   buildApGrid();
   populateVMFilters();
   document.getElementById('vm-medico').value = EMPRESA.medico;
@@ -823,6 +866,7 @@ function go(id){
   if(id==='dash') renderDash();
   if(id==='vm') renderVMLista();
   if(id==='enf'){buildEnfMes();renderEnfLista();}
+  if(id==='inc'){renderIncMed();}
   if(id==='nut') renderNutLista();
   if(id==='cit') renderCitas();
   if(id==='hc'&&HC.length) renderHC('');
@@ -865,9 +909,16 @@ async function syncVM(){
 }
 async function syncEnf(){
   setSyncDot('busy');
-  const r=await gasGet({action:'getRegistros'});
-  if(r.ok&&Array.isArray(r.data)){ RE=r.data; sv(SK.re,RE); renderEnfLista(); setSyncDot('ok'); toast('Registros enfermería sincronizados','ok'); }
-  else { setSyncDot('err'); toast('Error de sync','err'); }
+  try{
+    const [rRE, rINC] = await Promise.all([
+      gasGet({action:'getRegistros'}),
+      gasGet({action:'getInc'})
+    ]);
+    if(rRE.ok&&Array.isArray(rRE.data)){ RE=rRE.data; sv(SK.re,RE); renderEnfLista(); }
+    if(rINC.ok&&Array.isArray(rINC.data)){ INC=rINC.data; sv(SK.inc,INC); }
+    setSyncDot('ok');
+    toast('✅ Enfermería: '+RE.length+' registros · '+INC.length+' incapacidades','ok');
+  }catch(e){setSyncDot('err');toast('Error de sync','err');}
 }
 async function syncNut(){
   setSyncDot('busy');
