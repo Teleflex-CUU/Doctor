@@ -270,8 +270,9 @@ tr:hover td{background:var(--surf3)}
   <button class="tb on" id="tb-vm" onclick="go('vm')">📋 Valoraciones</button>
   <button class="tb" id="tb-enf" onclick="go('enf')">🏥 Enfermería</button>
   <button class="tb" id="tb-inc" onclick="go('inc')">🏥 Incapacidades</button>
+  <button class="tb" id="tb-emb" onclick="go('emb')">🤰 Embarazo</button>
+  <button class="tb" id="tb-exp" onclick="go('exp')">📁 Expediente</button>
   <button class="tb" id="tb-dash" onclick="go('dash')">📊 Dashboard</button>
-  <button class="tb" id="tb-exp" onclick="go('exp')">🗂️ Expediente</button>
   <button class="tb" id="tb-cit" onclick="go('cit')">📅 Citas <span class="bc" id="bc-cit">0</span></button>
   <button class="tb" id="tb-hc" onclick="go('hc')">👥 Head Count</button>
   <button class="tb" id="tb-nut" onclick="go('nut')">🥗 Nutriología</button>
@@ -756,6 +757,125 @@ tr:hover td{background:var(--surf3)}
   </div>
 </div>
 
+
+<!-- ══ EMBARAZO ══ -->
+<div class="sc" id="sc-emb">
+  <div class="sec-hd">
+    <div><h2>🤰 Embarazo y Prenatal</h2><p>Seguimiento de trabajadoras embarazadas — NOM-030-STPS</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="syncEmbarazadas()">🔄 Sync</button>
+      <button class="btn btn-navy" onclick="openModal('mo-embarazo')">+ Registrar embarazo</button>
+    </div>
+  </div>
+  <!-- Lista activas -->
+  <div id="emb-lista-activas" style="margin-bottom:16px"></div>
+  <!-- Seguimiento prenatal -->
+  <div id="emb-seg-panel" style="display:none">
+    <div class="sec-hd" style="margin-top:14px">
+      <div style="font-size:14px;font-weight:700;color:var(--navy)">📋 Seguimiento prenatal</div>
+      <button class="btn btn-navy btn-sm" onclick="openModal('mo-prenatal')">+ Nueva consulta</button>
+    </div>
+    <div id="emb-seg-lista"></div>
+  </div>
+</div>
+
+<!-- ══ MODAL EMBARAZO ══ -->
+<div class="ov" id="mo-embarazo">
+  <div class="mo" style="max-width:580px">
+    <div class="mh"><div class="mo-title">🤰 Registrar / Actualizar Embarazo</div><button class="mo-close" onclick="closeModal('mo-embarazo')">✕</button></div>
+    <div class="mb">
+      <!-- Buscar empleada -->
+      <div class="fi">
+        <label>Empleada *</label>
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="emb-emp-q" placeholder="No. empleado o nombre..." oninput="buscarEmpEmb(this.value)" autocomplete="off">
+          <div class="search-results" id="emb-emp-drop"></div>
+        </div>
+      </div>
+      <div id="emb-emp-card" style="display:none;margin-bottom:10px"></div>
+      <input type="hidden" id="emb-noEmp">
+      <input type="hidden" id="emb-nombre">
+      <input type="hidden" id="emb-planta">
+      <input type="hidden" id="emb-turno">
+      <!-- Datos embarazo -->
+      <div class="g2">
+        <div class="fi" style="margin:0">
+          <label>FUM (Fecha última menstruación) *</label>
+          <input type="date" id="emb-fum" onchange="calcFPP()">
+        </div>
+        <div class="fi" style="margin:0">
+          <label>FPP (Fecha probable de parto)</label>
+          <input type="date" id="emb-fpp" readonly style="background:var(--surf3)">
+        </div>
+        <div class="fi" style="margin:0">
+          <label>Semanas de gestación</label>
+          <input type="number" id="emb-semanas" readonly style="font-size:18px;font-weight:700;background:var(--surf3)">
+        </div>
+        <div class="fi" style="margin:0">
+          <label>Último control prenatal</label>
+          <input type="date" id="emb-ultimo-control">
+        </div>
+      </div>
+      <!-- Resumen gestación -->
+      <div id="emb-resumen" style="display:none;background:var(--blue3);border:1.5px solid #BFDBFE;border-radius:9px;padding:10px 13px;margin-bottom:10px;font-size:12px;color:var(--blue);font-weight:600"></div>
+      <div class="g2" style="margin-top:4px">
+        <div class="fi" style="margin:0">
+          <label>Alto riesgo obstétrico</label>
+          <select id="emb-alto-riesgo">
+            <option value="No">No</option>
+            <option value="Sí">Sí</option>
+          </select>
+        </div>
+        <div class="fi" style="margin:0">
+          <label>Lactancia activa</label>
+          <select id="emb-lactancia">
+            <option value="No">No</option>
+            <option value="Sí">Sí</option>
+          </select>
+        </div>
+      </div>
+      <div class="fi">
+        <label>Restricciones laborales</label>
+        <textarea id="emb-restricciones" rows="2" placeholder="Ej. No levantar más de 5kg, no exposición a químicos, evitar bipedestación prolongada..."></textarea>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('mo-embarazo')">Cancelar</button>
+      <button class="btn btn-navy" onclick="guardarEmbarazo()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL PRENATAL ══ -->
+<div class="ov" id="mo-prenatal">
+  <div class="mo" style="max-width:520px">
+    <div class="mh"><div class="mo-title">📋 Consulta Prenatal</div><button class="mo-close" onclick="closeModal('mo-prenatal')">✕</button></div>
+    <div class="mb">
+      <div id="pren-emp-info" style="margin-bottom:10px;font-size:12px;color:var(--tx2)"></div>
+      <div class="g3">
+        <div class="fi" style="margin:0"><label>Semanas gestación</label><input type="number" id="pren-semanas"></div>
+        <div class="fi" style="margin:0"><label>Peso (kg)</label><input type="number" step="0.1" id="pren-peso"></div>
+        <div class="fi" style="margin:0"><label>T/A</label><input type="text" id="pren-ta" placeholder="120/80"></div>
+        <div class="fi" style="margin:0"><label>FC (lat/min)</label><input type="number" id="pren-fc"></div>
+        <div class="fi" style="margin:0"><label>FCF (lat/min)</label><input type="number" id="pren-fcf" placeholder="Latidos fetales"></div>
+        <div class="fi" style="margin:0"><label>Edemas MI</label>
+          <select id="pren-edemas"><option>No</option><option>Leve (+)</option><option>Moderado (++)</option><option>Severo (+++)</option></select>
+        </div>
+      </div>
+      <div class="fi">
+        <label>Movimientos fetales</label>
+        <select id="pren-movimientos"><option value="">—</option><option>Presentes</option><option>Disminuidos</option><option>Ausentes (antes de 20 sdg)</option></select>
+      </div>
+      <div class="fi"><label>Notas / observaciones</label><textarea id="pren-notas" rows="3"></textarea></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('mo-prenatal')">Cancelar</button>
+      <button class="btn btn-navy" onclick="guardarPrenatal()">💾 Guardar consulta</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 </div><!-- /app -->
@@ -867,6 +987,7 @@ function go(id){
   if(id==='vm') renderVMLista();
   if(id==='enf'){buildEnfMes();renderEnfLista();}
   if(id==='inc'){renderIncMed();}
+  if(id==='emb'){renderEmbarazadas();}
   if(id==='nut') renderNutLista();
   if(id==='cit') renderCitas();
   if(id==='hc'&&HC.length) renderHC('');
@@ -1029,6 +1150,26 @@ function mostrarAntVM(noEmp){
   const vms=VM.filter(r=>String(r.noEmp||'').toLowerCase()===lc);
   const enfs=RE.filter(r=>String(r.noEmp||'').toLowerCase()===lc);
   const alArr=[], cronicos=[];
+  // Banner embarazo
+  const emb=EMBARAZADAS.find(x=>String(x.noEmp||'').toLowerCase()===lc);
+  if(emb){
+    const semanas=calcSemanas(emb.fum);
+    const ab=document.getElementById('vm-ant-box');
+    if(ab){
+      const embBanner=`<div style="background:#FDF2F8;border:2px solid #F0ABFC;border-radius:9px;padding:10px 13px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:#A21CAF;margin-bottom:5px">🤰 TRABAJADORA EMBARAZADA${emb.altoRiesgo==='Sí'?' — ⚠️ ALTO RIESGO':''}</div>
+        <div style="font-size:12px;display:flex;gap:12px;flex-wrap:wrap">
+          ${emb.fum?`<span>FUM: <strong>${emb.fum}</strong></span>`:''}
+          ${emb.fpp?`<span>FPP: <strong>${emb.fpp}</strong></span>`:''}
+          <span>SDG: <strong>${semanas} sem</strong></span>
+          ${emb.lactanciaActiva==='Sí'?'<span>🤱 Lactancia activa</span>':''}
+        </div>
+        ${emb.restricciones?`<div style="font-size:11px;color:#86198F;margin-top:4px">⚠️ Restricciones: ${emb.restricciones}</div>`:''}
+      </div>`;
+      ab.innerHTML=embBanner+(ab.innerHTML||'');
+      ab.style.display='block';
+    }
+  }
   [...vms,...enfs].forEach(r=>{
     if(r.alergias) r.alergias.split(/[,;]+/).forEach(a=>{a=a.trim();if(a&&!alArr.includes(a))alArr.push(a);});
   });
@@ -1105,7 +1246,7 @@ async function guardarVM(){
   sv(SK.vm,VM); populateVMFilters(); renderVMLista(); updateBadges();
   closeModal('mo-vm');
   toast('Guardando...','inf'); setSyncDot('busy');
-  const r=await gasPost({action:'saveValMedica',val});
+  const r=await gasPost({action:'saveMed',val});
   setSyncDot(r.ok?'ok':'err');
   toast(r.ok?'✅ Valoración guardada — '+val.nombre:'⚠️ Guardado local, sin conexión','ok');
   _vmEdit=null;
