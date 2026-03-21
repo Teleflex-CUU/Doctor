@@ -618,9 +618,27 @@ tr:hover td{background:var(--surf3)}
       <!-- Diagnóstico -->
       <div class="vm-section">
         <div class="vm-section-title">🩺 Impresión Diagnóstica</div>
-        <div class="g2">
-          <div class="fi" style="margin:0"><label>Diagnóstico principal *</label><input id="vm-dx" placeholder="Diagnóstico principal"></div>
-          <div class="fi" style="margin:0"><label>CIE-10</label><input id="vm-cie" placeholder="M54.5, J06.9..." style="text-transform:uppercase"></div>
+        <div class="fi">
+          <label>Diagnóstico / CIE-10 — busca por código o descripción *</label>
+          <div style="position:relative">
+            <input type="text" id="vm-cie10-search"
+              placeholder="Ej: lumbago, M54.5, hipertensión, J06.9..."
+              style="width:100%;padding:9px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:13px;font-family:inherit;outline:none"
+              oninput="buscarCIE10VM(this.value)" autocomplete="off">
+            <div id="vm-cie10-drop" style="position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1.5px solid var(--bor);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:300;max-height:260px;overflow-y:auto;display:none"></div>
+          </div>
+          <div id="vm-cie10-badge" style="display:none;margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span id="vm-cie10-code" style="font-family:monospace;font-weight:700;color:#0D9488;background:#F0FDFA;padding:3px 10px;border-radius:6px;font-size:12px"></span>
+            <span id="vm-cie10-desc" style="font-size:12px;color:var(--tx2)"></span>
+            <span id="vm-cie10-sis" style="font-size:10px;color:#94A3B8;background:#F1F5F9;padding:2px 8px;border-radius:5px"></span>
+            <button onclick="limpiarCIE10VM()" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:12px">✕</button>
+          </div>
+          <input type="hidden" id="vm-cie">
+          <input type="hidden" id="vm-dx">
+        </div>
+        <div class="fi" style="margin-top:4px">
+          <label>Diagnóstico libre (opcional — se autorrellena del CIE-10)</label>
+          <input id="vm-dx-libre" placeholder="Descripción adicional del diagnóstico...">
         </div>
         <div class="fi" style="margin-top:8px"><label>Diagnósticos secundarios / antecedentes</label><input id="vm-cronicos" placeholder="HAS, DM2, ..."></div>
       </div>
@@ -761,10 +779,9 @@ tr:hover td{background:var(--surf3)}
 <!-- ══ EMBARAZO ══ -->
 <div class="sc" id="sc-emb">
   <div class="sec-hd">
-    <div><h2>🤰 Embarazo y Prenatal</h2><p>Seguimiento de trabajadoras embarazadas — NOM-030-STPS</p></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div><h2>🤰 Embarazo y Prenatal</h2><p>Vista de registros capturados por enfermería</p></div>
+    <div style="display:flex;gap:8px">
       <button class="btn btn-ghost btn-sm" onclick="syncEmbarazadas()">🔄 Sync</button>
-      <button class="btn btn-navy" onclick="openModal('mo-embarazo')">+ Registrar embarazo</button>
     </div>
   </div>
   <!-- Lista activas -->
@@ -773,7 +790,7 @@ tr:hover td{background:var(--surf3)}
   <div id="emb-seg-panel" style="display:none">
     <div class="sec-hd" style="margin-top:14px">
       <div style="font-size:14px;font-weight:700;color:var(--navy)">📋 Seguimiento prenatal</div>
-      <button class="btn btn-navy btn-sm" onclick="openModal('mo-prenatal')">+ Nueva consulta</button>
+      <button class="btn btn-ghost btn-sm" onclick="syncEmbarazadas()">🔄 Actualizar</button>
     </div>
     <div id="emb-seg-lista"></div>
   </div>
@@ -1090,7 +1107,7 @@ function abrirNuevaVM(){
   // Clear fields
   ['vm-ne','vm-nombre','vm-planta','vm-turno','vm-depto','vm-puesto','vm-nss',
    'vm-noEmp','vm-genero','vm-ta','vm-fc','vm-fr','vm-temp','vm-peso','vm-talla',
-   'vm-spo2','vm-gluc','vm-imc','vm-motivo','vm-dx','vm-cie','vm-cronicos','vm-plan',
+   'vm-spo2','vm-gluc','vm-imc','vm-motivo','vm-dx','vm-dx-libre','vm-cie','vm-cronicos','vm-plan',
    'vm-proxcita','vm-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   const sv2=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
   sv2('vm-seg','Alta'); sv2('vm-incap','No');
@@ -1104,17 +1121,7 @@ function abrirNuevaVM(){
   });
   document.getElementById('vm-emp-results').classList.remove('show');
   openModal('mo-vm');
-  // Init CIE-10 selector
-  setTimeout(()=>{
-    initCIE10Selector('vm-cie10-input', (code, desc, sis) => {
-      document.getElementById('vm-cie10').value = code;
-      document.getElementById('vm-sistema-auto').value = sis;
-      const dxEl = document.getElementById('vm-dx');
-      if(dxEl && !dxEl.value) dxEl.value = desc;
-      // Autoselect sistema in exploración
-      highlightSistema(sis);
-    });
-  }, 100);
+  // CIE-10 ahora usa buscarCIE10VM directamente
 }
 
 function buscarEmpVM(val){
@@ -1344,7 +1351,7 @@ function getFormVM(){
     depto:g('vm-depto'), puesto:g('vm-puesto'), nss:g('vm-nss'), genero:g('vm-genero'),
     ta:g('vm-ta'), fc:g('vm-fc'), fr:g('vm-fr'), temp:g('vm-temp'), peso:g('vm-peso'),
     talla:g('vm-talla'), spo2:g('vm-spo2'), glucosa:g('vm-gluc'), imc:g('vm-imc'),
-    motivoConsulta:g('vm-motivo'), diagnostico:g('vm-dx'), cie10:g('vm-cie'), cronicos:g('vm-cronicos'),
+    motivoConsulta:g('vm-motivo'), diagnostico:g('vm-dx')||g('vm-dx-libre'), cie10:g('vm-cie'), cronicos:g('vm-cronicos'),
     plan:g('vm-plan'), seguimiento:g('vm-seg'), incapacidad:g('vm-incap'),
     proxCita:g('vm-proxcita'), obs:g('vm-obs'),
     medico:g('vm-medico'), cedula:g('vm-cedula')
@@ -1463,7 +1470,7 @@ function editVM(folio){
   sv2('vm-ta',r.ta); sv2('vm-fc',r.fc); sv2('vm-fr',r.fr); sv2('vm-temp',r.temp);
   sv2('vm-peso',r.peso); sv2('vm-talla',r.talla); sv2('vm-spo2',r.spo2); sv2('vm-gluc',r.glucosa);
   sv2('vm-imc',r.imc); sv2('vm-motivo',r.motivoConsulta); sv2('vm-dx',r.diagnostico);
-  sv2('vm-cie',r.cie10); sv2('vm-cronicos',r.dx2); sv2('vm-plan',r.plan);
+  sv2('vm-cie',r.cie10); sv2('vm-dx-libre',r.diagnostico||''); sv2('vm-cronicos',r.cronicos||r.dx2||''); sv2('vm-plan',r.plan);
   sv2('vm-seg',r.seguimiento||'Alta'); sv2('vm-incap',r.incapacidad||'No');
   sv2('vm-proxcita',r.proxCita); sv2('vm-obs',r.obs);
   if(r.aps) Object.entries(r.aps).forEach(([k,v])=>{
@@ -2301,6 +2308,7 @@ function getWeek(d){const dt=new Date(d);dt.setHours(0,0,0,0);dt.setDate(dt.getD
 
 // Close dropdowns on outside click
 document.addEventListener('click',e=>{
+  if(!e.target.closest('#vm-cie10-search')&&!e.target.closest('#vm-cie10-drop')){const d=document.getElementById('vm-cie10-drop');if(d)d.style.display='none';}
   if(!e.target.closest('.search-wrap')) document.querySelectorAll('.search-results').forEach(r=>r.classList.remove('show'));
   if(!e.target.closest('.ov')) return;
   if(e.target.classList.contains('ov')) e.target.classList.remove('open');
@@ -2347,6 +2355,51 @@ function mostrarBannerEmbarazo(emb){
   `;
   ab.insertBefore(banner, ab.firstChild);
   ab.style.display = 'block';
+}
+
+
+// ── CIE-10 búsqueda en valoración médica ─────────────────────────────
+function buscarCIE10VM(val){
+  const drop = document.getElementById('vm-cie10-drop');
+  if(!val||val.length<2){drop.style.display='none';return;}
+  const resultados = buscarCIE10(val);
+  if(!resultados.length){drop.style.display='none';return;}
+  drop.innerHTML = resultados.map(r=>
+    `<div onclick="selCIE10VM('${r.c}','${r.d.replace(/'/g,"\'")}','${r.s}')"
+      style="padding:9px 13px;cursor:pointer;border-bottom:1px solid #F1F5F9;font-size:12px;transition:.1s"
+      onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background=''">
+      <span style="font-family:monospace;font-weight:700;color:#0D9488;font-size:11px">${r.c}</span>
+      <span style="color:#0F172A;margin-left:6px">${r.d}</span>
+      <span style="float:right;font-size:10px;color:#94A3B8;background:#F1F5F9;padding:1px 6px;border-radius:5px">${r.s}</span>
+    </div>`
+  ).join('');
+  drop.style.display='block';
+}
+
+function selCIE10VM(code, desc, sis){
+  // Llenar campos
+  document.getElementById('vm-cie').value = code;
+  document.getElementById('vm-dx').value = desc;
+  // Si el campo libre está vacío, autocompletar
+  const libre = document.getElementById('vm-dx-libre');
+  if(libre && !libre.value) libre.value = desc;
+  // Mostrar badge
+  document.getElementById('vm-cie10-search').value = code + ' — ' + desc;
+  document.getElementById('vm-cie10-code').textContent = code;
+  document.getElementById('vm-cie10-desc').textContent = desc;
+  document.getElementById('vm-cie10-sis').textContent = sis;
+  document.getElementById('vm-cie10-badge').style.display = 'flex';
+  document.getElementById('vm-cie10-drop').style.display = 'none';
+  // Resaltar sistema en exploración
+  highlightSistema(sis);
+}
+
+function limpiarCIE10VM(){
+  document.getElementById('vm-cie').value = '';
+  document.getElementById('vm-dx').value = '';
+  document.getElementById('vm-cie10-search').value = '';
+  document.getElementById('vm-cie10-badge').style.display = 'none';
+  document.getElementById('vm-cie10-drop').style.display = 'none';
 }
 
 function highlightSistema(sistema) {
