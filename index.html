@@ -574,7 +574,7 @@ tr:hover td{background:var(--surf3)}
           <span class="search-icon">🔍</span>
           <input type="text" id="vm-ne" placeholder="No. empleado — escribe para autorellenar..."
             style="font-size:15px;font-weight:600;letter-spacing:2px"
-            oninput="buscarEmpVM(this.value)" autocomplete="off">
+            oninput="buscarEmpVM(this.value)" autocomplete="off" style="position:relative">
           <div class="search-results" id="vm-emp-results"></div>
         </div>
         <div id="vm-emp-card-box" style="display:none"></div>
@@ -1090,7 +1090,7 @@ function abrirNuevaVM(){
   // Clear fields
   ['vm-ne','vm-nombre','vm-planta','vm-turno','vm-depto','vm-puesto','vm-nss',
    'vm-noEmp','vm-genero','vm-ta','vm-fc','vm-fr','vm-temp','vm-peso','vm-talla',
-   'vm-spo2','vm-gluc','vm-imc','vm-motivo','vm-dx','vm-cie','vm-dx2','vm-plan',
+   'vm-spo2','vm-gluc','vm-imc','vm-motivo','vm-dx','vm-cie','vm-cronicos','vm-plan',
    'vm-proxcita','vm-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   const sv2=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
   sv2('vm-seg','Alta'); sv2('vm-incap','No');
@@ -1121,9 +1121,16 @@ function buscarEmpVM(val){
   val=(val||'').trim();
   const res=document.getElementById('vm-emp-results');
   if(!val||val.length<2){res.classList.remove('show');return;}
+  if(!HC.length){
+    res.innerHTML='<div class="search-item" style="color:var(--amber)">⚠️ Sin Head Count. Ve a la pestaña HC y usa 🔄 Sync desde GAS</div>';
+    res.classList.add('show'); return;
+  }
   const lc=val.toLowerCase();
   const matches=HC.filter(e=>String(e.noEmp||'').toLowerCase().includes(lc)||String(e.nombre||'').toLowerCase().includes(lc)).slice(0,6);
-  if(!matches.length){res.classList.remove('show');return;}
+  if(!matches.length){
+    res.innerHTML='<div class="search-item" style="color:var(--tx3)">Sin resultados para "'+val+'"</div>';
+    res.classList.add('show'); return;
+  }
   res.innerHTML=matches.map(e=>`
     <div class="search-item" onclick="selEmpVM('${e.noEmp}')">
       <div class="search-item-name">${e.nombre}</div>
