@@ -1120,7 +1120,7 @@ function buscarEmpVM(val){
   res.classList.add('show');
 }
 
-function selEmpVM(noEmp){
+async function selEmpVM(noEmp){
   const e=HC.find(x=>String(x.noEmp)===String(noEmp));
   if(!e) return;
   const sv2=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
@@ -1128,6 +1128,8 @@ function selEmpVM(noEmp){
   sv2('vm-nombre',e.nombre); sv2('vm-planta',e.planta); sv2('vm-turno',e.turno);
   sv2('vm-depto',e.depto); sv2('vm-puesto',e.puesto); sv2('vm-nss',e.nss); sv2('vm-genero',e.genero);
   document.getElementById('vm-emp-results').classList.remove('show');
+  // Cargar expediente completo del GAS (datos de las 3 apps)
+  cargarExpCompletoVM(noEmp);
   // Employee card
   const ec=document.getElementById('vm-emp-card-box');
   if(ec){
@@ -1145,57 +1147,114 @@ function selEmpVM(noEmp){
   mostrarAntVM(noEmp);
 }
 
+async function cargarExpCompletoVM(noEmp){
+  const ab=document.getElementById('vm-ant-box'); if(!ab) return;
+  ab.innerHTML='<div style="font-size:11px;color:var(--tx3);padding:8px">🔄 Cargando antecedentes...</div>';
+  ab.style.display='block';
+  try{
+    const r=await gasGet({action:'getExpCompleto',noEmp});
+    if(r.ok&&r.data){
+      renderAntVM(noEmp, r.data);
+    } else {
+      mostrarAntVM(noEmp); // fallback a datos locales
+    }
+  }catch(e){ mostrarAntVM(noEmp); }
+}
+
+function renderAntVM(noEmp, data){
+  const ab=document.getElementById('vm-ant-box'); if(!ab) return;
+  const res=data.resumen||{};
+  const lc=String(noEmp||'').toLowerCase();
+  let html='';
+  // Banner embarazo
+  if(data.embarazo&&data.embarazo.embarazada==='Sí'){
+    const emb=data.embarazo;
+    const semanas=emb.semanas||'—';
+    html+=`<div style="background:#FDF2F8;border:2px solid #F0ABFC;border-radius:9px;padding:10px 13px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:#A21CAF;margin-bottom:5px">🤰 TRABAJADORA EMBARAZADA${emb.altoRiesgo==='Sí'?' — ⚠️ ALTO RIESGO':''}</div>
+      <div style="font-size:12px;display:flex;gap:12px;flex-wrap:wrap">
+        ${emb.fpp?`<span>FPP: <strong>${emb.fpp}</strong></span>`:''}
+        <span>SDG: <strong>${semanas} sem</strong></span>
+        ${emb.lactancia==='Sí'?'<span>🤱 Lactancia activa</span>':''}
+      </div>
+      ${emb.restricciones?`<div style="font-size:11px;color:#86198F;margin-top:4px">⚠️ ${emb.restricciones}</div>`:''}
+    </div>`;
+  }
+  // Discapacidad
+  if(data.discapacidad){
+    html+=`<div style="background:#F5F3FF;border:1.5px solid #DDD6FE;border-radius:9px;padding:9px 13px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:#6D28D9">♿ DISCAPACIDAD: ${data.discapacidad.tipo||'—'}</div>
+      ${data.discapacidad.adaptaciones?`<div style="font-size:11px;color:#7C3AED">Adaptaciones: ${data.discapacidad.adaptaciones}</div>`:''}
+    </div>`;
+  }
+  // Alergias (de todas las apps)
+  if(res.alergias&&res.alergias.length){
+    html+=`<div class="ant-box ant-alergias">
+      <div class="ant-title" style="color:#DC2626">⚠️ Alergias (${res.alergias.length})</div>
+      ${res.alergias.map(a=>`<span class="ant-tag" style="background:#FEE2E2;color:#991B1B">${a}</span>`).join('')}
+    </div>`;
+  }
+  // Enfermedades crónicas de TODAS las apps
+  if(res.cronicosAntecedentes&&res.cronicosAntecedentes.length){
+    html+=`<div class="ant-box ant-cronicos">
+      <div class="ant-title" style="color:#92400E">📋 Enf. crónicas / Antecedentes</div>
+      ${res.cronicosAntecedentes.map(c=>`<span class="ant-tag" style="background:#FEF3C7;color:#92400E">${c}</span>`).join('')}
+    </div>`;
+  }
+  // Tratamientos activos de todas las apps
+  if(res.tratamientosActivos&&res.tratamientosActivos.filter(Boolean).length){
+    html+=`<div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:9px;padding:9px 13px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:#16A34A;margin-bottom:5px">💊 Tratamientos activos</div>
+      ${res.tratamientosActivos.filter(Boolean).map(t=>`<div style="font-size:11px;color:var(--tx2);padding:2px 0">• ${t}</div>`).join('')}
+    </div>`;
+  }
+  // Últimas 5 consultas de enfermería
+  if(data.enfermeria&&data.enfermeria.length){
+    html+=`<div style="background:#F0FDFA;border:1.5px solid #99F6E4;border-radius:9px;padding:9px 13px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:#0F766E;margin-bottom:6px">🏥 Enfermería — últimas ${Math.min(5,data.enfermeria.length)} consultas</div>
+      ${data.enfermeria.slice(0,5).map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(0,0,0,.06);font-size:11px">
+        <span style="color:var(--tx3);min-width:75px;white-space:nowrap">${r.fecha||'—'}</span>
+        <span style="font-weight:600;flex:1">${r.diagnostico||'—'}</span>
+        ${r.tratamiento?`<span style="color:var(--tx3);font-size:10px">${r.tratamiento.slice(0,30)}</span>`:''}
+      </div>`).join('')}
+    </div>`;
+  }
+  // Últimas consultas médicas propias
+  if(data.valoraciones&&data.valoraciones.length){
+    html+=`<div style="background:var(--blue3);border:1.5px solid #BFDBFE;border-radius:9px;padding:9px 13px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px">👨‍⚕️ Val. médicas previas (${data.valoraciones.length})</div>
+      ${data.valoraciones.slice(0,3).map(r=>`<div style="padding:3px 0;border-bottom:1px solid rgba(0,0,0,.06);font-size:11px">
+        <span style="color:var(--tx3)">${r.fecha||'—'}</span> <span style="font-weight:600">${r.diagnostico||'—'}</span>
+        ${r.dx2?`<span style="color:var(--tx3)"> · ${r.dx2}</span>`:''}
+      </div>`).join('')}
+    </div>`;
+  }
+  // Nutrición
+  if(data.nutricion&&data.nutricion.length){
+    const ult=data.nutricion[0];
+    html+=`<div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:9px;padding:9px 13px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:4px">🥗 Nutriología — última: ${ult.fecha||'—'}</div>
+      <div style="font-size:11px;color:var(--tx2)">${ult.diagnostico||'—'}${ult.imc?' · IMC: '+ult.imc:''}</div>
+    </div>`;
+  }
+  // Incapacidades activas
+  if(data.incapacidades&&data.incapacidades.some(r=>r.incActiva)){
+    const act=data.incapacidades.filter(r=>r.incActiva);
+    html+=`<div style="background:var(--red2);border:1.5px solid #FCA5A5;border-radius:9px;padding:9px 13px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:#991B1B;margin-bottom:4px">🏥 ${act.length} incapacidad(es) activa(s)</div>
+      ${act.map(r=>`<div style="font-size:11px;color:var(--red)">${r.tipo||'—'} · ${r.incInicio||'—'} al ${r.incFin||'—'}</div>`).join('')}
+    </div>`;
+  }
+  if(!html) html='<div style="font-size:11px;color:var(--tx3);padding:8px">Sin antecedentes registrados en ninguna app</div>';
+  ab.innerHTML=html; ab.style.display='block';
+}
+
 function mostrarAntVM(noEmp){
   const lc=String(noEmp||'').toLowerCase();
   const vms=VM.filter(r=>String(r.noEmp||'').toLowerCase()===lc);
   const enfs=RE.filter(r=>String(r.noEmp||'').toLowerCase()===lc);
   const alArr=[], cronicos=[];
   // Banner embarazo
-  const emb=EMBARAZADAS.find(x=>String(x.noEmp||'').toLowerCase()===lc);
-  if(emb){
-    const semanas=calcSemanas(emb.fum);
-    const ab=document.getElementById('vm-ant-box');
-    if(ab){
-      const embBanner=`<div style="background:#FDF2F8;border:2px solid #F0ABFC;border-radius:9px;padding:10px 13px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;color:#A21CAF;margin-bottom:5px">🤰 TRABAJADORA EMBARAZADA${emb.altoRiesgo==='Sí'?' — ⚠️ ALTO RIESGO':''}</div>
-        <div style="font-size:12px;display:flex;gap:12px;flex-wrap:wrap">
-          ${emb.fum?`<span>FUM: <strong>${emb.fum}</strong></span>`:''}
-          ${emb.fpp?`<span>FPP: <strong>${emb.fpp}</strong></span>`:''}
-          <span>SDG: <strong>${semanas} sem</strong></span>
-          ${emb.lactanciaActiva==='Sí'?'<span>🤱 Lactancia activa</span>':''}
-        </div>
-        ${emb.restricciones?`<div style="font-size:11px;color:#86198F;margin-top:4px">⚠️ Restricciones: ${emb.restricciones}</div>`:''}
-      </div>`;
-      ab.innerHTML=embBanner+(ab.innerHTML||'');
-      ab.style.display='block';
-    }
-  }
-  [...vms,...enfs].forEach(r=>{
-    if(r.alergias) r.alergias.split(/[,;]+/).forEach(a=>{a=a.trim();if(a&&!alArr.includes(a))alArr.push(a);});
-  });
-  vms.forEach(r=>{
-    [r.dx2,r.antecedentesPersonales].forEach(c=>{
-      if(c) c.split(/[,;\n]+/).forEach(x=>{x=x.trim();if(x&&!cronicos.includes(x))cronicos.push(x);});
-    });
-  });
-  const ab=document.getElementById('vm-ant-box');
-  if(!ab) return;
-  let html='';
-  if(alArr.length){
-    html+=`<div class="ant-box ant-alergias">
-      <div class="ant-title" style="color:#DC2626">⚠️ Alergias registradas</div>
-      ${alArr.map(a=>`<span class="ant-tag" style="background:#FEE2E2;color:#991B1B">${a}</span>`).join('')}
-    </div>`;
-  }
-  if(cronicos.length){
-    html+=`<div class="ant-box ant-cronicos">
-      <div class="ant-title" style="color:#92400E">📋 Antecedentes / Enf. crónicas</div>
-      ${cronicos.map(c=>`<span class="ant-tag" style="background:#FEF3C7;color:#92400E">${c}</span>`).join('')}
-    </div>`;
-  }
-  if(html){ab.innerHTML=html;ab.style.display='block';}
-  else ab.style.display='none';
-}
 
 function calcIMC(){
   const p=parseFloat(document.getElementById('vm-peso').value);
@@ -2175,6 +2234,8 @@ function toast(msg,type='ok'){
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function getWeek(d){const dt=new Date(d);dt.setHours(0,0,0,0);dt.setDate(dt.getDate()+3-(dt.getDay()+6)%7);const w=new Date(dt.getFullYear(),0,4);return 1+Math.round(((dt-w)/86400000-3+(w.getDay()+6)%7)/7);}
+
+}
 
 // Close dropdowns on outside click
 document.addEventListener('click',e=>{
