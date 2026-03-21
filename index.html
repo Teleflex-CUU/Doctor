@@ -911,7 +911,7 @@ const SIS = {
 const APARATOS = ['Cabeza y cuello','Cardiovascular','Respiratorio','Digestivo','Genitourinario','Musculoesquelético','Neurológico','Dermatológico','Endocrino','Psiquiátrico','Oftalmológico','Auditivo'];
 
 // ── Data ──────────────────────────────────────────────────
-let HC=[], RE=[], CI=[], VM=[], NUT=[], INC=[];
+let HC=[], RE=[], CI=[], VM=[], NUT=[], INC=[], EMBARAZADAS=[];
 let currentUser = null;
 let _vmEdit = null; // folio being edited
 let _editCtx = null; // {type, id}
@@ -2093,11 +2093,11 @@ function importarHC(input){
         nss:String(r[mapeo.nss]||'').trim(),genero:String(r[mapeo.genero]||'').trim()
       })).filter(r=>r.noEmp&&r.nombre);
       sv(SK.hc,HC);
-      document.getElementById('hc-upload').style.display='none';
-      document.getElementById('hc-table').style.display='block';
-      document.getElementById('btn-hc-del').style.display='';
+      const _up=document.getElementById('hc-upload');if(_up)_up.style.display='none';
+      const _tb=document.getElementById('hc-table');if(_tb)_tb.style.display='block';
+      const _bd=document.getElementById('btn-hc-del');if(_bd)_bd.style.display='';
       renderHC('');
-      document.getElementById('hc-count').textContent=HC.length+' empleados cargados';
+      const _cnt=document.getElementById('hc-count');if(_cnt)_cnt.textContent=HC.length+' empleados cargados';
       toast('✅ HC importado: '+HC.length+' empleados','ok');
     }catch(err){toast('Error al leer el archivo: '+err.message,'err');}
   };
@@ -2130,11 +2130,11 @@ async function syncHC(){
     if(r.ok&&Array.isArray(r.data)&&r.data.length){
       HC=r.data;
       sv(SK.hc,HC);
-      document.getElementById('hc-upload').style.display='none';
-      document.getElementById('hc-table').style.display='block';
-      document.getElementById('btn-hc-del').style.display='';
+      const _u=document.getElementById('hc-upload');if(_u)_u.style.display='none';
+      const _t=document.getElementById('hc-table');if(_t)_t.style.display='block';
+      const _b=document.getElementById('btn-hc-del');if(_b)_b.style.display='';
       renderHC('');
-      document.getElementById('hc-count').textContent=HC.length+' empleados cargados';
+      const _c=document.getElementById('hc-count');if(_c)_c.textContent=HC.length+' empleados cargados';
       setSyncDot('ok');
       toast('✅ HC sincronizado — '+HC.length+' empleados','ok');
     } else {
@@ -2245,7 +2245,18 @@ document.addEventListener('click',e=>{
 });
 
 // Global error guard
-document.addEventListener('DOMContentLoaded', poblarSelectUsuarios);
+document.addEventListener('DOMContentLoaded', async function(){
+  try{
+    const r=await gasGet({action:'getUsers'});
+    if(r.ok&&Array.isArray(r.data)&&r.data.length) sv(SK.users,r.data);
+  }catch(e){}
+  poblarSelectUsuarios();
+  // Sync embarazadas al cargar
+  try{
+    const r2=await gasGet({action:'getEmbarazadas'});
+    if(r2.ok&&Array.isArray(r2.data)) EMBARAZADAS=r2.data;
+  }catch(e){}
+});
 window.addEventListener('error',e=>{console.warn('[Médico]',e.message,e.lineno);});
 window.addEventListener('unhandledrejection',e=>{console.warn('[Médico] Promise:',e.reason);});
 </script>
