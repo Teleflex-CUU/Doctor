@@ -622,7 +622,7 @@ tr:hover td{background:var(--surf3)}
           <div class="fi" style="margin:0"><label>Diagnóstico principal *</label><input id="vm-dx" placeholder="Diagnóstico principal"></div>
           <div class="fi" style="margin:0"><label>CIE-10</label><input id="vm-cie" placeholder="M54.5, J06.9..." style="text-transform:uppercase"></div>
         </div>
-        <div class="fi" style="margin-top:8px"><label>Diagnósticos secundarios / antecedentes</label><input id="vm-dx2" placeholder="HAS, DM2, ..."></div>
+        <div class="fi" style="margin-top:8px"><label>Diagnósticos secundarios / antecedentes</label><input id="vm-cronicos" placeholder="HAS, DM2, ..."></div>
       </div>
       <!-- Plan -->
       <div class="vm-section">
@@ -1142,6 +1142,9 @@ async function selEmpVM(noEmp){
   document.getElementById('vm-emp-results').classList.remove('show');
   // Cargar expediente completo del GAS (datos de las 3 apps)
   cargarExpCompletoVM(noEmp);
+  // Autocargar datos de embarazo si aplica
+  const emb = EMBARAZADAS.find(x => String(x.noEmp||'').toLowerCase() === String(noEmp||'').toLowerCase());
+  if(emb) mostrarBannerEmbarazo(emb);
   // Employee card
   const ec=document.getElementById('vm-emp-card-box');
   if(ec){
@@ -1178,19 +1181,9 @@ function renderAntVM(noEmp, data){
   const res=data.resumen||{};
   const lc=String(noEmp||'').toLowerCase();
   let html='';
-  // Banner embarazo
+  // Banner embarazo — usar función compartida para evitar duplicados
   if(data.embarazo&&data.embarazo.embarazada==='Sí'){
-    const emb=data.embarazo;
-    const semanas=emb.semanas||'—';
-    html+=`<div style="background:#FDF2F8;border:2px solid #F0ABFC;border-radius:9px;padding:10px 13px;margin-bottom:10px">
-      <div style="font-size:11px;font-weight:700;color:#A21CAF;margin-bottom:5px">🤰 TRABAJADORA EMBARAZADA${emb.altoRiesgo==='Sí'?' — ⚠️ ALTO RIESGO':''}</div>
-      <div style="font-size:12px;display:flex;gap:12px;flex-wrap:wrap">
-        ${emb.fpp?`<span>FPP: <strong>${emb.fpp}</strong></span>`:''}
-        <span>SDG: <strong>${semanas} sem</strong></span>
-        ${emb.lactancia==='Sí'?'<span>🤱 Lactancia activa</span>':''}
-      </div>
-      ${emb.restricciones?`<div style="font-size:11px;color:#86198F;margin-top:4px">⚠️ ${emb.restricciones}</div>`:''}
-    </div>`;
+    mostrarBannerEmbarazo(data.embarazo);
   }
   // Discapacidad
   if(data.discapacidad){
@@ -1286,8 +1279,13 @@ function mostrarAntVM(noEmp){
       ab.style.display='block';
     }
   }
-  [...vms,...enfs].forEach(r=>{
-    if(r.alergias) r.alergias.split(/[,;]+/).forEach(a=>{a=a.trim();if(a&&!alArr.includes(a))alArr.push(a);});
+  // Alergias deduplicadas de VM + ENF + expediente
+  const srcAlergias = [...vms, ...enfs];
+  srcAlergias.forEach(r=>{
+    if(r.alergias) r.alergias.split(/[,;]+/).forEach(a=>{
+      a=a.trim().toLowerCase();
+      if(a && !alArr.map(x=>x.toLowerCase()).includes(a)) alArr.push(r.alergias.split(/[,;]+/).find(x=>x.trim().toLowerCase()===a)||a);
+    });
   });
   vms.forEach(r=>{
     [r.dx2,r.antecedentesPersonales].forEach(c=>{
@@ -1339,7 +1337,7 @@ function getFormVM(){
     depto:g('vm-depto'), puesto:g('vm-puesto'), nss:g('vm-nss'), genero:g('vm-genero'),
     ta:g('vm-ta'), fc:g('vm-fc'), fr:g('vm-fr'), temp:g('vm-temp'), peso:g('vm-peso'),
     talla:g('vm-talla'), spo2:g('vm-spo2'), glucosa:g('vm-gluc'), imc:g('vm-imc'),
-    motivoConsulta:g('vm-motivo'), diagnostico:g('vm-dx'), cie10:g('vm-cie'), dx2:g('vm-dx2'),
+    motivoConsulta:g('vm-motivo'), diagnostico:g('vm-dx'), cie10:g('vm-cie'), cronicos:g('vm-cronicos'),
     plan:g('vm-plan'), seguimiento:g('vm-seg'), incapacidad:g('vm-incap'),
     proxCita:g('vm-proxcita'), obs:g('vm-obs'),
     medico:g('vm-medico'), cedula:g('vm-cedula')
@@ -1458,7 +1456,7 @@ function editVM(folio){
   sv2('vm-ta',r.ta); sv2('vm-fc',r.fc); sv2('vm-fr',r.fr); sv2('vm-temp',r.temp);
   sv2('vm-peso',r.peso); sv2('vm-talla',r.talla); sv2('vm-spo2',r.spo2); sv2('vm-gluc',r.glucosa);
   sv2('vm-imc',r.imc); sv2('vm-motivo',r.motivoConsulta); sv2('vm-dx',r.diagnostico);
-  sv2('vm-cie',r.cie10); sv2('vm-dx2',r.dx2); sv2('vm-plan',r.plan);
+  sv2('vm-cie',r.cie10); sv2('vm-cronicos',r.dx2); sv2('vm-plan',r.plan);
   sv2('vm-seg',r.seguimiento||'Alta'); sv2('vm-incap',r.incapacidad||'No');
   sv2('vm-proxcita',r.proxCita); sv2('vm-obs',r.obs);
   if(r.aps) Object.entries(r.aps).forEach(([k,v])=>{
@@ -2316,6 +2314,33 @@ document.addEventListener('DOMContentLoaded', async function(){
 });
 window.addEventListener('error',e=>{console.warn('[Médico]',e.message,e.lineno);});
 
+
+
+function mostrarBannerEmbarazo(emb){
+  const semanas = calcSemanas(emb.fum||emb.FUM||'');
+  const ab = document.getElementById('vm-ant-box');
+  if(!ab) return;
+  // Remove existing pregnancy banner if any
+  const existing = ab.querySelector('.emb-banner');
+  if(existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.className = 'emb-banner';
+  banner.style.cssText = 'background:#FDF2F8;border:2px solid #F0ABFC;border-radius:9px;padding:10px 13px;margin-bottom:10px';
+  banner.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:#A21CAF;margin-bottom:5px">
+      🤰 TRABAJADORA EMBARAZADA${(emb.altoRiesgo||emb.AltoRiesgoObstetrico)==='Sí'?' — ⚠️ ALTO RIESGO':''}
+    </div>
+    <div style="font-size:12px;display:flex;gap:12px;flex-wrap:wrap;color:#86198F">
+      ${(emb.fum||emb.FUM)?`<span>FUM: <strong>${emb.fum||emb.FUM}</strong></span>`:''}
+      ${(emb.fpp||emb.FPP)?`<span>FPP: <strong>${emb.fpp||emb.FPP}</strong></span>`:''}
+      <span>SDG: <strong>${semanas} sem</strong></span>
+      ${(emb.lactanciaActiva||emb.LactanciaActiva)==='Sí'?'<span>🤱 Lactancia activa</span>':''}
+    </div>
+    ${(emb.restricciones||emb.RestriccionesEmbarazo)?`<div style="font-size:11px;color:#86198F;margin-top:4px">⚠️ ${emb.restricciones||emb.RestriccionesEmbarazo}</div>`:''}
+  `;
+  ab.insertBefore(banner, ab.firstChild);
+  ab.style.display = 'block';
+}
 
 function highlightSistema(sistema) {
   const aparato = CIE10_SISTEMA_APARATO[sistema] || '';
