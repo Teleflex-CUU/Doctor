@@ -1117,7 +1117,7 @@ function buscarEmpVM(val){
   const lc=val.toLowerCase();
   const matches=HC.filter(e=>String(e.noEmp||'').toLowerCase().includes(lc)||String(e.nombre||'').toLowerCase().includes(lc)).slice(0,6);
   if(!matches.length){res.innerHTML='<div class="search-item" style="color:var(--tx3)">Sin resultados</div>';res.classList.add('show');return;}
-  res.innerHTML=matches.map(e=>`<div class="search-item" onclick="selEmpVM('${e.noEmp}')"><div class="search-item-name">${e.nombre}</div><div class="search-item-meta">No.${e.noEmp} · ${e.planta||'—'} · ${e.turno||'—'}</div></div>`).join('');
+  res.innerHTML=matches.map(e=>`<div class="search-item" onclick="selEmpVM('${e.noEmp}')"><div class="search-item-name">${e.nombre}</div><div class="search-item-meta">No.${e.noEmp} · ${e.planta||'—'} · ${e.puesto||'—'}</div></div>`).join('');
   res.classList.add('show');
 }
 async function selEmpVM(noEmp){
@@ -2094,8 +2094,8 @@ function importarHC(input){
       if(!rows.length){toast('Archivo vacío','err');return;}
       const cols=Object.keys(rows[0]);
       const find=pats=>cols.find(c=>pats.some(p=>c.toLowerCase().includes(p)))||'';
-      const m={noEmp:find(['no.emp','noemp','numero','empleado']),nombre:find(['nombre']),depto:find(['depto','departamento']),puesto:find(['puesto','cargo']),planta:find(['planta','site']),turno:find(['turno','shift']),nss:find(['nss','seguro']),genero:find(['genero','género','sexo'])};
-      HC=rows.map(r=>({noEmp:String(r[m.noEmp]||'').trim(),nombre:String(r[m.nombre]||'').trim(),depto:String(r[m.depto]||'').trim(),puesto:String(r[m.puesto]||'').trim(),planta:String(r[m.planta]||'').trim(),turno:String(r[m.turno]||'').trim(),nss:String(r[m.nss]||'').trim(),genero:String(r[m.genero]||'').trim()})).filter(r=>r.noEmp&&r.nombre);
+      const m={noEmp:find(['número','numero','no.']),nombre:find(['nombre']),curp:find(['curp']),supervisor:find(['supervisor']),puesto:find(['puesto','cargo']),planta:find(['planta','site']),categoria:find(['categoría','categoria'])};
+      HC=rows.map(r=>({noEmp:String(r[m.noEmp]||'').trim(),nombre:String(r[m.nombre]||'').trim(),curp:String(r[m.curp]||'').trim(),supervisor:String(r[m.supervisor]||'').trim(),puesto:String(r[m.puesto]||'').trim(),planta:String(r[m.planta]||'').trim(),categoria:String(r[m.categoria]||'').trim()})).filter(r=>r.noEmp&&r.nombre);
       sv(SK.hc,HC);
       const u=document.getElementById('hc-upload');if(u)u.style.display='none';
       const t=document.getElementById('hc-table');if(t)t.style.display='block';
@@ -2108,11 +2108,18 @@ function importarHC(input){
 }
 function renderHC(q){
   q=(q||'').toLowerCase();
-  const lista=HC.filter(e=>!q||(e.nombre+e.noEmp+e.depto).toLowerCase().includes(q)).slice(0,100);
+  const lista=HC.filter(e=>!q||(e.nombre+e.noEmp+e.puesto+e.planta).toLowerCase().includes(q)).slice(0,150);
   const tbody=document.getElementById('hc-tbody');if(!tbody)return;
-  tbody.innerHTML=lista.map(e=>`<tr><td style="padding:8px 11px;border-bottom:1px solid var(--bor);font-family:monospace;font-size:11px">${e.noEmp}</td><td style="padding:8px 11px;border-bottom:1px solid var(--bor)"><strong>${e.nombre}</strong></td><td style="padding:8px 11px;border-bottom:1px solid var(--bor)">${e.planta||'—'}</td><td style="padding:8px 11px;border-bottom:1px solid var(--bor)">${e.turno||'—'}</td><td style="padding:8px 11px;border-bottom:1px solid var(--bor)">${e.depto||'—'}</td></tr>`).join('');
+  tbody.innerHTML=lista.map(e=>`<tr>
+    <td style="padding:7px 11px;border-bottom:1px solid var(--bor);font-family:monospace;font-size:11px">${e.noEmp}</td>
+    <td style="padding:7px 11px;border-bottom:1px solid var(--bor)"><strong>${e.nombre}</strong></td>
+    <td style="padding:7px 11px;border-bottom:1px solid var(--bor)">${e.planta||'—'}</td>
+    <td style="padding:7px 11px;border-bottom:1px solid var(--bor)">${e.puesto||'—'}</td>
+    <td style="padding:7px 11px;border-bottom:1px solid var(--bor)">${e.categoria||'—'}</td>
+  </tr>`).join('');
   const cnt=document.getElementById('hc-count');if(cnt)cnt.textContent=HC.length+' empleados'+(q?' (filtrado)':'');
 }
+
 function delHC(){if(!confirm('¿Eliminar HC?'))return;HC=[];sv(SK.hc,HC);const u=document.getElementById('hc-upload');if(u)u.style.display='block';const t=document.getElementById('hc-table');if(t)t.style.display='none';const b=document.getElementById('btn-hc-del');if(b)b.style.display='none';const c=document.getElementById('hc-count');if(c)c.textContent='0 empleados';}
 
 // ════════════════════════════════════════════════════════════════
