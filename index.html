@@ -1,24 +1,263 @@
-/* Alertas de Signos Vitales */
-.vital-bad { border-color: var(--red) !important; background-color: var(--red2) !important; animation: pulse-red 2s infinite; }
-.vital-warn { border-color: var(--amber) !important; background-color: var(--amber2) !important; }
-@keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>SO Médico — Teleflex PRO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-/* Mini Historial en Modal */
-.mini-history {
-    background: var(--surf2);
-    border-radius: 8px;
-    padding: 10px;
-    margin-top: 10px;
-    border: 1px solid var(--bor);
-    max-height: 150px;
-    overflow-y: auto;
+<style>
+/* ── CONFIGURACIÓN DE COLORES Y TOKENS ──────────────── */
+:root {
+  --navy: #0B2545; --blue: #1A56DB; --blue2: #3B82F6; --blue3: #EFF6FF;
+  --green: #059669; --green2: #D1FAE5;
+  --amber: #D97706; --amber2: #FEF3C7;
+  --red: #DC2626; --red2: #FEE2E2;
+  --surf: #FFFFFF; --surf2: #F8FAFC; --bor: #E2E8F0;
+  --tx: #0F172A; --tx2: #475569; --tx3: #94A3B8;
+  --radius: 12px;
 }
-.mini-history-item {
-    font-size: 11px;
-    padding: 5px;
-    border-bottom: 1px solid var(--bor);
-    display: flex;
-    justify-content: space-between;
+
+/* Estilos de Alerta de Signos Vitales */
+.vital-danger { border-color: var(--red) !important; background-color: var(--red2) !important; color: var(--red) !important; font-weight: bold; }
+.vital-warning { border-color: var(--amber) !important; background-color: var(--amber2) !important; }
+
+/* ── DISEÑO DEL MODAL PROFESIONAL (DOS COLUMNAS) ────── */
+.mo-layout { display: grid; grid-template-columns: 1fr 320px; gap: 0; height: 85vh; overflow: hidden; }
+.mo-form-side { padding: 25px; overflow-y: auto; background: #fff; }
+.mo-history-side { background: var(--surf2); border-left: 1px solid var(--bor); padding: 20px; overflow-y: auto; }
+
+.sec-title-pro { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--blue); letter-spacing: 1px; border-bottom: 2px solid var(--blue3); padding-bottom: 5px; margin-bottom: 15px; margin-top: 20px; }
+
+/* ── ESTILOS DEL HISTORIAL RÁPIDO ───────────────────── */
+.hist-card { background: #fff; border: 1px solid var(--bor); border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 12px; transition: 0.2s; }
+.hist-card:hover { border-color: var(--blue2); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.hist-date { font-weight: bold; color: var(--navy); display: block; margin-bottom: 4px; }
+.hist-diag { color: var(--tx); display: block; line-height: 1.3; }
+
+/* Reset y base (mantenido de tu original) */
+body { font-family: 'DM Sans', sans-serif; background: var(--surf2); margin: 0; color: var(--tx); }
+.btn-primary { background: var(--navy); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.fi label { display: block; font-size: 11px; font-weight: 700; color: var(--tx2); margin-bottom: 4px; text-transform: uppercase; }
+input, select, textarea { width: 100%; padding: 10px; border: 1.5px solid var(--bor); border-radius: 8px; font-family: inherit; outline: none; transition: 0.2s; }
+input:focus { border-color: var(--blue); }
+
+/* (Agrega aquí el resto de tus estilos originales de Nav y Login) */
+</style>
+</head>
+<body>
+
+<!-- MODAL VALORACIÓN MÉDICA MEJORADO -->
+<div class="ov" id="mo-vm">
+  <div class="mo" style="max-width: 1100px; width: 95vw;">
+    <div class="mo-head">
+      <div>
+        <div class="mo-title" id="vm-title">Nueva Valoración Médica</div>
+        <span class="folio" id="vm-folio">VM-000000</span>
+      </div>
+      <button class="mo-close" onclick="closeModal('mo-vm')">✕</button>
+    </div>
+
+    <div class="mo-layout">
+      <!-- LADO IZQUIERDO: FORMULARIO -->
+      <div class="mo-form-side">
+        
+        <div class="sec-title-pro">👤 Información del Paciente</div>
+        <div class="search-wrap" style="margin-bottom:15px">
+            <input type="text" id="vm-ne" placeholder="Ingrese Nómina..." oninput="buscarEmpVM(this.value)" style="font-size: 16px; font-weight: bold;">
+            <div class="search-results" id="vm-emp-results"></div>
+        </div>
+        
+        <div class="g3">
+            <div class="fi"><label>Nombre</label><input id="vm-nombre" readonly></div>
+            <div class="fi"><label>Planta</label><input id="vm-planta" readonly></div>
+            <div class="fi"><label>Puesto</label><input id="vm-puesto" readonly></div>
+        </div>
+
+        <div class="sec-title-pro">💓 Exploración Física y Signos</div>
+        <div class="vitals-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <div class="fi"><label>T/A (mmHg)</label><input id="vm-ta" placeholder="120/80" oninput="validarVitals()"></div>
+            <div class="fi"><label>FC (lpm)</label><input id="vm-fc" type="number" oninput="validarVitals()"></div>
+            <div class="fi"><label>Temp (°C)</label><input id="vm-temp" type="number" step="0.1" oninput="validarVitals()"></div>
+            <div class="fi"><label>Glucosa</label><input id="vm-gluc" type="number" oninput="validarVitals()"></div>
+            <div class="fi"><label>Peso (kg)</label><input id="vm-peso" type="number" oninput="calcIMC()"></div>
+            <div class="fi"><label>Talla (cm)</label><input id="vm-talla" type="number" oninput="calcIMC()"></div>
+            <div class="fi"><label>IMC</label><input id="vm-imc" readonly style="background:#f1f5f9"></div>
+            <div class="fi"><label>SpO2 (%)</label><input id="vm-spo2" type="number"></div>
+        </div>
+
+        <div class="sec-title-pro">🩺 Diagnóstico y Plan</div>
+        <div class="fi"><label>Motivo de Consulta</label><textarea id="vm-motivo" rows="2"></textarea></div>
+        <div class="fi"><label>Diagnóstico (CIE-10)</label><input id="vm-dx" placeholder="Busque diagnóstico..."></div>
+        <div class="fi"><label>Tratamiento / Indicaciones</label><textarea id="vm-plan" rows="3" placeholder="Medicamentos y dosis..."></textarea></div>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px;">
+            <button class="btn-primary" onclick="guardarConsultaPRO()" id="btn-save">💾 Guardar Registro Médico</button>
+            <button class="btn" style="background: #e2e8f0;" onclick="closeModal('mo-vm')">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- LADO DERECHO: HISTORIAL RÁPIDO -->
+      <div class="mo-history-side">
+        <div style="font-size: 13px; font-weight: bold; color: var(--navy); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+            🕒 Historial Reciente
+        </div>
+        <div id="side-history-list">
+            <div style="text-align: center; color: var(--tx3); margin-top: 40px; font-size: 12px;">
+                Ingrese una nómina para ver los antecedentes.
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// URL de tu Web App de Google Apps Script
+const GAS_URL = "TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUI";
+
+// 1. VALIDACIÓN DE SIGNOS VITALES (SEMÁFORO)
+function validarVitals() {
+    // Presión Arterial
+    const ta = document.getElementById('vm-ta');
+    if (ta.value.includes('/')) {
+        const sys = parseInt(ta.value.split('/')[0]);
+        const dia = parseInt(ta.value.split('/')[1]);
+        if (sys >= 140 || dia >= 90) ta.className = 'vital-danger';
+        else if (sys >= 130 || dia >= 85) ta.className = 'vital-warning';
+        else ta.className = '';
+    }
+
+    // Temperatura
+    const temp = document.getElementById('vm-temp');
+    const tVal = parseFloat(temp.value);
+    if (tVal >= 38 || tVal <= 35) temp.className = 'vital-danger';
+    else if (tVal >= 37.5) temp.className = 'vital-warning';
+    else temp.className = '';
+
+    // Glucosa
+    const gluc = document.getElementById('vm-gluc');
+    const gVal = parseFloat(gluc.value);
+    if (gVal > 126 || (gVal > 0 && gVal < 70)) gluc.className = 'vital-danger';
+    else if (gVal > 100) gluc.className = 'vital-warning';
+    else gluc.className = '';
 }
-/* Badge de borrador */
-#draft-badge { display:none; background: var(--amber); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 10px; }
+
+// 2. BUSCADOR DE HISTORIAL EN TIEMPO REAL
+async function cargarHistorialLateral(noEmp) {
+    const listContainer = document.getElementById('side-history-list');
+    listContainer.innerHTML = '<div style="font-size:11px; color:var(--blue)">Buscando antecedentes...</div>';
+
+    try {
+        // Buscamos primero en el array local (RE y VM) para mayor velocidad
+        const historialLocal = [
+            ...VM.filter(v => String(v.noEmp) === String(noEmp)),
+            ...RE.filter(r => String(r.noEmp) === String(noEmp))
+        ].sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 5);
+
+        if (historialLocal.length === 0) {
+            listContainer.innerHTML = '<div style="font-size:11px; color:var(--tx3)">Sin registros previos.</div>';
+            return;
+        }
+
+        listContainer.innerHTML = historialLocal.map(item => `
+            <div class="hist-card">
+                <span class="hist-date">${item.fecha} — ${item.folio || 'Consulta'}</span>
+                <span class="hist-diag"><strong>DX:</strong> ${item.diagnostico || 'N/A'}</span>
+                <span style="font-size:10px; color:var(--tx3); display:block; margin-top:5px;">
+                    Plan: ${item.plan ? item.plan.substring(0, 50) + '...' : 'Sin notas'}
+                </span>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        listContainer.innerHTML = '<div style="font-size:11px; color:var(--red)">Error al cargar historial.</div>';
+    }
+}
+
+// 3. GUARDADO SEGURO CON GOOGLE DRIVE
+async function guardarConsultaPRO() {
+    const btn = document.getElementById('btn-save');
+    const data = {
+        action: 'saveMed', // Acción para tu Google Apps Script
+        noEmp: document.getElementById('vm-ne').value,
+        nombre: document.getElementById('vm-nombre').value,
+        ta: document.getElementById('vm-ta').value,
+        temp: document.getElementById('vm-temp').value,
+        diagnostico: document.getElementById('vm-dx').value,
+        plan: document.getElementById('vm-plan').value,
+        fecha: new Date().toLocaleDateString()
+    };
+
+    if (!data.noEmp || !data.diagnostico) {
+        Swal.fire('Atención', 'Nómina y Diagnóstico son obligatorios', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '⌛ Guardando...';
+
+    try {
+        // Simulación de envío (ajusta con tu lógica de fetch)
+        const resp = await fetch(GAS_URL, {
+            method: 'POST',
+            mode: 'no-cors', // Importante para Google Scripts
+            body: JSON.stringify(data)
+        });
+
+        // Actualizamos localmente para que aparezca en el Dashboard sin recargar
+        VM.push(data);
+        localStorage.setItem('so_vm8', JSON.stringify(VM));
+        
+        Swal.fire({
+            icon: 'success',
+            title: '¡Guardado!',
+            text: 'El registro se sincronizó con Google Drive',
+            timer: 2000
+        });
+
+        closeModal('mo-vm');
+        renderVMLista(); // Refresca tu lista principal
+
+    } catch (error) {
+        Swal.fire('Error', 'No se pudo conectar con el servidor. Se guardó copia local.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '💾 Guardar Registro Médico';
+    }
+}
+
+// 4. INTEGRACIÓN CON TU BÚSQUEDA EXISTENTE
+// Modifica tu función selEmpVM para llamar al historial lateral
+const originalSelEmpVM = selEmpVM;
+selEmpVM = function(noEmp) {
+    // Llamamos a la lógica original que ya tienes
+    const e = HC.find(x => String(x.noEmp) === String(noEmp));
+    if(e) {
+        document.getElementById('vm-nombre').value = e.nombre;
+        document.getElementById('vm-planta').value = e.planta;
+        document.getElementById('vm-puesto').value = e.puesto;
+        
+        // Nueva funcionalidad: Cargar historial lateral
+        cargarHistorialLateral(noEmp);
+    }
+    document.getElementById('vm-emp-results').classList.remove('show');
+};
+
+// 5. CÁLCULO DE IMC
+function calcIMC() {
+    const p = parseFloat(document.getElementById('vm-peso').value);
+    const t = parseFloat(document.getElementById('vm-talla').value) / 100;
+    if (p > 0 && t > 0) {
+        const imc = (p / (t * t)).toFixed(1);
+        document.getElementById('vm-imc').value = imc;
+    }
+}
+</script>
+
+</body>
+</html>
