@@ -1959,34 +1959,160 @@ function expTab(tab,elBtn){
   const panel=document.getElementById('exp-panel-'+tab);if(panel)panel.style.display='block';
 }
 function renderExpContent(noEmp,data){
-  const emp=HC.find(x=>String(x.noEmp)===String(noEmp))||{};
-  const exp=data.expediente||{};
-  const res=data.resumen||{};
-  const alergias=[...new Set([...(res.alergias||[]),(exp.Alergias||'').split(/[,;]+/).map(x=>x.trim()).filter(Boolean)])];
-  const cronicos=[...new Set([...(res.cronicosAntecedentes||[]),(exp.AntPatologicos||'').split(/[,;]+/).map(x=>x.trim()).filter(Boolean)])];
-  const todas=[...(data.valoraciones||[]),...(data.enfermeria||[])].sort((a,b)=>(b.Fecha||b.fecha||'').localeCompare(a.Fecha||a.fecha||''));
-  const el=document.getElementById('exp-content');
-  el.innerHTML=`
-    <div class="emp-card" style="margin-bottom:14px"><div class="emp-card-name">${emp.nombre||noEmp} <span class="emp-card-tag">No. ${noEmp}</span></div><div class="emp-card-grid"><div class="emp-card-field"><label>Planta</label><div>${emp.planta||'—'}</div></div><div class="emp-card-field"><label>Turno</label><div>${emp.turno||'—'}</div></div><div class="emp-card-field"><label>Depto</label><div>${emp.depto||'—'}</div></div><div class="emp-card-field"><label>NSS</label><div>${emp.nss||'—'}</div></div></div></div>
+  const emp = HC.find(x => String(x.noEmp) === String(noEmp)) || {};
+  const exp = data.expediente || {};
+  const res = data.resumen || {};
+  const timeline = data.timeline || [];
+
+  const alergias = [...new Set([
+    ...(res.alergias || []),
+    ...String(exp.Alergias || '').split(/[,;]+/).map(x => x.trim()).filter(Boolean)
+  ])];
+
+  const cronicos = [...new Set([
+    ...(res.cronicosAntecedentes || []),
+    ...String(exp.AntPatologicos || '').split(/[,;]+/).map(x => x.trim()).filter(Boolean)
+  ])];
+
+  const fmt = v => v === undefined || v === null || v === '' ? '—' : v;
+
+  const nutCards = (data.nutricion || []).length
+    ? (data.nutricion || []).map(r => {
+        const fecha = r.Fecha || r.fecha || '—';
+        const nutriologa = r.Nutriologa || r.nutriologa || r.RegistradoPor || r.registradoPor || '—';
+        const titulo = r.ImcCategoria || r.imccategoria || r.Diagnostico || r.diagnostico || r.TipoCons || r.tipocons || 'Consulta nutricional';
+        const imc = r.IMC || r.Imc || r.imc || '';
+        const peso = r.Peso || r.peso || '';
+        const kcal = r.Kcal || r.kcal || '';
+        const comorb = r.Comorbilidades || r.comorbilidades || '';
+
+        return `
+          <div class="card cp" style="margin-bottom:6px">
+            <div style="font-size:10px;color:var(--tx3)">${fecha} · ${nutriologa}</div>
+            <div style="font-weight:700;font-size:13px">${titulo}</div>
+            ${(imc || peso) ? `<div style="font-size:11px;color:var(--tx3)">IMC: ${fmt(imc)}${peso ? ` · Peso: ${peso} kg` : ''}</div>` : ''}
+            ${kcal ? `<div style="font-size:11px;color:var(--tx3)">Plan: ${kcal} kcal</div>` : ''}
+            ${comorb ? `<div style="font-size:11px;color:var(--amber)">📋 Comorbilidades: ${comorb}</div>` : ''}
+          </div>
+        `;
+      }).join('')
+    : `<div class="empty"><div class="empty-icon">🥗</div><div class="empty-text">Sin consultas nutricionales</div></div>`;
+
+  const tlHTML = timeline.length
+    ? timeline.map(ev => `
+        <div class="card cp" style="margin-bottom:6px;border-left:3px solid ${
+          ev.origen === 'Médico' ? 'var(--blue)' :
+          ev.origen === 'Enfermería' ? 'var(--green)' : '#16A34A'
+        }">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+            <div>
+              <div style="font-size:10px;color:var(--tx3)">${ev.fecha || '—'} ${ev.hora ? '· ' + ev.hora : ''}</div>
+              <div style="font-size:12px;font-weight:800">${ev.origen}</div>
+              <div style="font-size:12px;margin-top:3px">${ev.titulo || '—'}</div>
+              ${ev.detalle ? `<div style="font-size:11px;color:var(--tx3);margin-top:4px">${ev.detalle}</div>` : ''}
+            </div>
+            <div class="pill pill-gray" style="white-space:nowrap">${ev.registradoPor || ev.origen}</div>
+          </div>
+        </div>
+      `).join('')
+    : `<div class="empty"><div class="empty-icon">🕓</div><div class="empty-text">Sin eventos clínicos</div></div>`;
+
+  const el = document.getElementById('exp-content');
+  if(!el) return;
+
+  el.innerHTML = `
+    <div class="emp-card" style="margin-bottom:14px">
+      <div class="emp-card-name">${emp.nombre || noEmp} <span class="emp-card-tag">No. ${noEmp}</span></div>
+      <div class="emp-card-grid">
+        <div class="emp-card-field"><label>Planta</label><div>${emp.planta || '—'}</div></div>
+        <div class="emp-card-field"><label>Turno</label><div>${emp.turno || '—'}</div></div>
+        <div class="emp-card-field"><label>Depto</label><div>${emp.depto || '—'}</div></div>
+        <div class="emp-card-field"><label>NSS</label><div>${emp.nss || '—'}</div></div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
       <button class="btn btn-ghost btn-sm exp-tab on" onclick="expTab('resumen',this)">📋 Resumen</button>
-      <button class="btn btn-ghost btn-sm exp-tab" onclick="expTab('vm',this)">👨‍⚕️ Médico (${(data.valoraciones||[]).length})</button>
-      <button class="btn btn-ghost btn-sm exp-tab" onclick="expTab('enf',this)">🏥 Enfermería (${(data.enfermeria||[]).length})</button>
-      <button class="btn btn-ghost btn-sm exp-tab" onclick="expTab('nut',this)">🥗 Nutrición (${(data.nutricion||[]).length})</button>
-      <button class="btn btn-ghost btn-sm exp-tab" onclick="expTab('inc',this)">🏥 Incap. (${(data.incapacidades||[]).length})</button>
+      <button class="btn btn-ghost btn-sm exp-tab" onclick="expTab('vm',this)">👨‍⚕️ Médico (${(data.valoraciones || []).length})</button>
+      <button class="btn btn-ghost btn-sm exp-tab" onclick="expTab('enf',this)">🏥 Enfermería (${(data.enfermeria || []).length})</button>
+      <button class="btn btn-ghost btn-sm exp-tab" onclick="expTab('nut',this)">🥗 Nutrición (${(data.nutricion || []).length})</button>
+      <button class="btn btn-ghost btn-sm exp-tab" onclick="expTab('inc',this)">🏥 Incap. (${(data.incapacidades || []).length})</button>
     </div>
-    <div id="exp-panel-resumen" class="exp-panel">
-      ${alergias.length?`<div class="card cp" style="margin-bottom:8px;border-left:3px solid var(--red)"><div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px">⚠️ Alergias</div>${alergias.map(a=>`<span class="ant-tag" style="background:#FEE2E2;color:#991B1B">${a}</span>`).join('')}</div>`:''}
-      ${cronicos.length?`<div class="card cp" style="margin-bottom:8px;border-left:3px solid var(--amber)"><div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">📋 Enfermedades crónicas</div>${cronicos.map(c=>`<span class="ant-tag" style="background:#FEF3C7;color:#92400E">${c}</span>`).join('')}</div>`:''}
-      ${(res.tratamientosActivos||[]).filter(Boolean).length?`<div class="card cp" style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">💊 Tratamientos activos</div>${(res.tratamientosActivos||[]).filter(Boolean).map(t=>`<div style="font-size:12px;padding:2px 0">• ${t}</div>`).join('')}</div>`:''}
-      <div style="font-size:11px;color:var(--tx3);margin-top:8px">Total consultas: ${res.totalConsultas||0} · Incapacidades activas: ${res.incapacidadesActivas||0}</div>
-    </div>
-    <div id="exp-panel-vm" class="exp-panel" style="display:none">${(data.valoraciones||[]).length?data.valoraciones.map(r=>`<div class="card cp" style="margin-bottom:6px"><div style="font-size:10px;color:var(--tx3)">${r.Fecha||r.fecha||'—'} · <span style="font-family:monospace">${r.Folio||r.folio||''}</span></div><div style="font-weight:700;font-size:13px">${r.Diagnostico||r.diagnostico||'—'}</div>${(r.Cronicos||r.cronicos)?`<div style="font-size:11px;color:var(--amber)">📋 ${r.Cronicos||r.cronicos}</div>`:''}</div>`).join(''):'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin valoraciones</div></div>'}</div>
-    <div id="exp-panel-enf" class="exp-panel" style="display:none">${(data.enfermeria||[]).length?data.enfermeria.map(r=>`<div class="card cp" style="margin-bottom:6px"><div style="font-size:10px;color:var(--tx3)">${r.Fecha||r.fecha||'—'} · ${r.RegistradoPor||r.registradoPor||'Enfermería'}</div><div style="font-weight:700;font-size:13px">${r.Diagnostico||r.diagnostico||'—'}</div></div>`).join(''):'<div class="empty"><div class="empty-icon">🏥</div><div class="empty-text">Sin registros de enfermería</div></div>'}</div>
-    <div id="exp-panel-nut" class="exp-panel" style="display:none">${(data.nutricion||[]).length?data.nutricion.map(r=>`<div class="card cp" style="margin-bottom:6px"><div style="font-size:10px;color:var(--tx3)">${r.fecha||'—'} · ${r.nutriologa||'—'}</div><div style="font-weight:700;font-size:13px">${r.imcCategoria||r.diagnostico||'—'}</div>${r.imc?`<div style="font-size:11px;color:var(--tx3)">IMC: ${r.imc}${r.peso?' · Peso: '+r.peso+'kg':''}</div>`:''}</div>`).join(''):'<div class="empty"><div class="empty-icon">🥗</div><div class="empty-text">Sin consultas nutricionales</div></div>'}</div>
-    <div id="exp-panel-inc" class="exp-panel" style="display:none">${(data.incapacidades||[]).length?data.incapacidades.map(r=>`<div class="card cp" style="margin-bottom:6px;border-left:3px solid ${incActivaMed(r)?'var(--green)':'var(--bor2)'}"><div style="display:flex;justify-content:space-between"><span style="font-weight:700">${r.Tipo||r.tipo||'—'}</span><span class="pill ${incActivaMed(r)?'pill-green':'pill-gray'}">${incActivaMed(r)?'Activa':'Fin.'}</span></div><div style="font-size:11px;color:var(--tx3)">${r.IncInicio||r.incInicio||'—'} · ${r.IncDias||r.incDias||'—'} días</div></div>`).join(''):'<div class="empty"><div class="empty-icon">🏥</div><div class="empty-text">Sin incapacidades</div></div>'}</div>`;
-}
 
+    <div id="exp-panel-resumen" class="exp-panel">
+      ${alergias.length ? `
+        <div class="card cp" style="margin-bottom:8px;border-left:3px solid var(--red)">
+          <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px">⚠️ Alergias</div>
+          ${alergias.map(a => `<span class="ant-tag" style="background:#FEE2E2;color:#991B1B">${a}</span>`).join('')}
+        </div>` : ''}
+
+      ${cronicos.length ? `
+        <div class="card cp" style="margin-bottom:8px;border-left:3px solid var(--amber)">
+          <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">📋 Enfermedades crónicas</div>
+          ${cronicos.map(c => `<span class="ant-tag" style="background:#FEF3C7;color:#92400E">${c}</span>`).join('')}
+        </div>` : ''}
+
+      ${(res.tratamientosActivos || []).filter(Boolean).length ? `
+        <div class="card cp" style="margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">💊 Tratamientos activos</div>
+          ${(res.tratamientosActivos || []).filter(Boolean).map(t => `<div style="font-size:12px;padding:2px 0">• ${t}</div>`).join('')}
+        </div>` : ''}
+
+      <div class="card cp" style="margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:8px">🕓 Línea de tiempo clínica compartida</div>
+        ${tlHTML}
+      </div>
+
+      <div style="font-size:11px;color:var(--tx3);margin-top:8px">
+        Total consultas: ${res.totalConsultas || 0} · Incapacidades activas: ${res.incapacidadesActivas || 0}
+      </div>
+    </div>
+
+    <div id="exp-panel-vm" class="exp-panel" style="display:none">
+      ${(data.valoraciones || []).length
+        ? (data.valoraciones || []).map(r => `
+          <div class="card cp" style="margin-bottom:6px">
+            <div style="font-size:10px;color:var(--tx3)">${r.Fecha || r.fecha || '—'} · <span style="font-family:monospace">${r.Folio || r.folio || ''}</span></div>
+            <div style="font-weight:700;font-size:13px">${r.Diagnostico || r.diagnostico || '—'}</div>
+            ${(r.Cronicos || r.cronicos) ? `<div style="font-size:11px;color:var(--amber)">📋 ${r.Cronicos || r.cronicos}</div>` : ''}
+          </div>
+        `).join('')
+        : `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin valoraciones</div></div>`
+      }
+    </div>
+
+    <div id="exp-panel-enf" class="exp-panel" style="display:none">
+      ${(data.enfermeria || []).length
+        ? (data.enfermeria || []).map(r => `
+          <div class="card cp" style="margin-bottom:6px">
+            <div style="font-size:10px;color:var(--tx3)">${r.Fecha || r.fecha || '—'} · ${r.RegistradoPor || r.registradoPor || 'Enfermería'}</div>
+            <div style="font-weight:700;font-size:13px">${r.Diagnostico || r.diagnostico || r.TipoConsulta || r.tipoconsulta || r.Tipo || r.tipo || '—'}</div>
+          </div>
+        `).join('')
+        : `<div class="empty"><div class="empty-icon">🏥</div><div class="empty-text">Sin registros de enfermería</div></div>`
+      }
+    </div>
+
+    <div id="exp-panel-nut" class="exp-panel" style="display:none">
+      ${nutCards}
+    </div>
+
+    <div id="exp-panel-inc" class="exp-panel" style="display:none">
+      ${(data.incapacidades || []).length
+        ? (data.incapacidades || []).map(r => `
+          <div class="card cp" style="margin-bottom:6px;border-left:3px solid ${incActivaMed(r) ? 'var(--green)' : 'var(--bor2)'}">
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-weight:700">${r.Tipo || r.tipo || '—'}</span>
+              <span class="pill ${incActivaMed(r) ? 'pill-green' : 'pill-gray'}">${incActivaMed(r) ? 'Activa' : 'Fin.'}</span>
+            </div>
+            <div style="font-size:11px;color:var(--tx3)">${r.IncInicio || r.incInicio || '—'} · ${r.IncDias || r.incDias || '—'} días</div>
+          </div>
+        `).join('')
+        : `<div class="empty"><div class="empty-icon">🏥</div><div class="empty-text">Sin incapacidades</div></div>`
+      }
+    </div>
+  `;
+}
 // ════════════════════════════════════════════════════════════════
 // DASHBOARD
 // ════════════════════════════════════════════════════════════════
@@ -2206,6 +2332,17 @@ document.addEventListener('DOMContentLoaded',async function(){
 });
 window.addEventListener('error',e=>{console.warn('[Médico]',e.message,e.lineno);});
 window.addEventListener('unhandledrejection',e=>{console.warn('[Médico] Promise:',e.reason);});
+  setInterval(() => {
+  try {
+    if (typeof syncAll === 'function') syncAll();
+  } catch(e){}
+}, 45000);
+
+window.addEventListener('focus', () => {
+  try {
+    if (typeof syncAll === 'function') syncAll();
+  } catch(e){}
+});
 
 </script>
 </body>
