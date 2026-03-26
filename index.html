@@ -1218,7 +1218,7 @@ async function guardarVM(){
 }
 function verVM(folio){
   const r=VM.find(x=>x.folio===folio);if(!r)return;
-  const el=document.getElementById('vm-detail');if(!el)return;
+  const el=document.getElementById('vm-body');if(!el)return;
   const apRows=r.aps?Object.entries(r.aps).filter(([,v])=>v.val&&v.val!=='Normal').map(([k,v])=>`<tr><td style="padding:4px 8px;border-bottom:1px solid #E2E8F0;font-size:11px">${k}</td><td style="padding:4px 8px;border-bottom:1px solid #E2E8F0;font-weight:700;font-size:11px">${v.val}</td><td style="padding:4px 8px;border-bottom:1px solid #E2E8F0;font-size:11px;color:#475569">${v.nota||'—'}</td></tr>`).join(''):'';
   el.innerHTML=`<div style="padding:16px 20px;max-height:70vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
