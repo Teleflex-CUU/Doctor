@@ -1117,7 +1117,7 @@ function buscarEmpVM(val){
   const lc=val.toLowerCase();
   const matches=HC.filter(e=>String(e.noEmp||'').toLowerCase().includes(lc)||String(e.nombre||'').toLowerCase().includes(lc)).slice(0,6);
   if(!matches.length){res.innerHTML='<div class="search-item" style="color:var(--tx3)">Sin resultados</div>';res.classList.add('show');return;}
-  res.innerHTML=matches.map(e=>`<div class="search-item" onclick="selEmpVM('${e.noEmp}')"><div class="search-item-name">${e.nombre}</div><div class="search-item-meta">No.${e.noEmp} · ${e.planta||'—'} · ${e.puesto||'—'}</div></div>`).join('');
+  res.innerHTML=matches.map(e=>`<div class="search-item" onclick="selEmpVM('${e.noEmp}')"><div class="search-item-name">${e.nombre}</div><div class="search-item-meta">No.${e.noEmp} · ${e.planta||'—'} · ${e.depto||'—'}</div></div>`).join('');
   res.classList.add('show');
 }
 async function selEmpVM(noEmp){
@@ -2095,7 +2095,19 @@ function importarHC(input){
       const cols=Object.keys(rows[0]);
       const find=pats=>cols.find(c=>pats.some(p=>c.toLowerCase().includes(p)))||'';
       const m={noEmp:find(['número','numero','no.']),nombre:find(['nombre']),curp:find(['curp']),supervisor:find(['supervisor']),puesto:find(['puesto','cargo']),planta:find(['planta','site']),categoria:find(['categoría','categoria'])};
-      HC=rows.map(r=>({noEmp:String(r[m.noEmp]||'').trim(),nombre:String(r[m.nombre]||'').trim(),curp:String(r[m.curp]||'').trim(),supervisor:String(r[m.supervisor]||'').trim(),puesto:String(r[m.puesto]||'').trim(),planta:String(r[m.planta]||'').trim(),categoria:String(r[m.categoria]||'').trim()})).filter(r=>r.noEmp&&r.nombre);
+      HC=rows.map(r=>({
+        noEmp:    String(r[m.noEmp]||'').trim(),
+        nombre:   String(r[m.nombre]||'').trim(),
+        depto:    String(r[m.depto]||'').trim(),
+        puesto:   String(r[m.puesto]||'').trim(),
+        categoria:String(r[m.categoria]||'').trim(),
+        nss:      String(r[m.nss]||'').trim(),
+        planta:   String(r[m.planta]||'').trim(),
+        genero:   String(r[m.genero]||'').trim(),
+        fechaNacimiento: String(r[m.fechaNacimiento]||'').trim(),
+        edad:     String(r[m.edad]||'').trim(),
+        telefono: String(r[m.telefono]||'').trim()
+      })).filter(r=>r.noEmp&&r.nombre);
       sv(SK.hc,HC);
       const u=document.getElementById('hc-upload');if(u)u.style.display='none';
       const t=document.getElementById('hc-table');if(t)t.style.display='block';
@@ -2114,8 +2126,9 @@ function renderHC(q){
     <td style="padding:7px 11px;border-bottom:1px solid var(--bor);font-family:monospace;font-size:11px">${e.noEmp}</td>
     <td style="padding:7px 11px;border-bottom:1px solid var(--bor)"><strong>${e.nombre}</strong></td>
     <td style="padding:7px 11px;border-bottom:1px solid var(--bor)">${e.planta||'—'}</td>
+    <td style="padding:7px 11px;border-bottom:1px solid var(--bor)">${e.depto||'—'}</td>
     <td style="padding:7px 11px;border-bottom:1px solid var(--bor)">${e.puesto||'—'}</td>
-    <td style="padding:7px 11px;border-bottom:1px solid var(--bor)">${e.categoria||'—'}</td>
+    <td style="padding:7px 11px;border-bottom:1px solid var(--bor)">${e.genero||'—'}</td>
   </tr>`).join('');
   const cnt=document.getElementById('hc-count');if(cnt)cnt.textContent=HC.length+' empleados'+(q?' (filtrado)':'');
 }
