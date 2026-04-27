@@ -601,6 +601,13 @@ function buildConsultaFromForm(){
 }
 
 function cargarExtAutocomplete(){
+  const extList=JSON.parse(localStorage.getItem('so_ext')||'[]');
+  const dl=document.getElementById('ext-nombres-list');
+  const dl2=document.getElementById('ext-empresas-list');
+  if(dl) dl.innerHTML=extList.map(e=>`<option value="${esc(e.nombre)}">`).join('');
+  if(dl2) dl2.innerHTML=[...new Set(extList.map(e=>e.empresa).filter(Boolean))].map(e=>`<option value="${esc(e)}">`).join('');
+  setTimeout(()=>{const n=document.getElementById('ext-nombre');if(n)n.focus();},100);
+
   // Autocomplete for external employee modal
   const inp=document.getElementById('ext-nombre');
   if(inp) inp.focus();
@@ -1178,6 +1185,32 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--sf2);
       <span id="past-count" style="background:var(--tl);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px">0</span>
     </div>
     <div id="past-list"><div class="empty"><div class="empty-i">💊</div>Sin registros hoy</div></div>
+  </div>
+
+  <!-- Estadística del día -->
+  <div class="card cp" style="margin-top:12px" id="past-stats-card" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="sec-t" style="margin:0">📊 Estadística del día</div>
+      <span id="past-stats-turno" style="font-size:11px;color:var(--tx3)"></span>
+    </div>
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--sf3);border-radius:8px;padding:10px;text-align:center;border-left:3px solid var(--tl)">
+        <div id="past-stat-total" style="font-size:24px;font-weight:900;color:var(--tl);font-family:monospace">0</div>
+        <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;font-weight:700">Total pastilleos</div>
+      </div>
+      <div style="background:var(--sf3);border-radius:8px;padding:10px;text-align:center;border-left:3px solid var(--bl)">
+        <div id="past-stat-pac" style="font-size:24px;font-weight:900;color:var(--bl);font-family:monospace">0</div>
+        <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;font-weight:700">Pacientes únicos</div>
+      </div>
+      <div style="background:var(--sf3);border-radius:8px;padding:10px;text-align:center;border-left:3px solid var(--am)">
+        <div id="past-stat-med" style="font-size:24px;font-weight:900;color:var(--am);font-family:monospace">—</div>
+        <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;font-weight:700">Motivo frecuente</div>
+      </div>
+    </div>
+    <!-- Top motivos -->
+    <div class="sec-t" style="margin-bottom:8px">Motivos principales</div>
+    <div id="past-stat-motivos"></div>
   </div>
 </div>
 
@@ -3250,8 +3283,8 @@ function buscarCapEmp(val){
   drop.innerHTML=matches.map(e=>`<div class="si-item" onclick="abrirConsultaEmpleado('${esc(e.noEmp)}')"><div class="si-name">${e.nombre}</div><div class="si-meta">No.${e.noEmp} · ${e.planta||'—'} · ${e.depto||'—'}</div></div>`).join('');
   drop.classList.add('show');
 }
-function abrirConsultaEmpleado(noEmp){
-  const emp=HC.find(x=>String(x.noEmp)===String(noEmp));
+function abrirConsultaEmpleado(noEmp, empObj){
+  const emp=empObj||(HC.find(x=>String(x.noEmp)===String(noEmp)));
   if(!emp){toast('Empleado no encontrado','err');return;}
   _capEmp=emp;
   _empActual=emp;
@@ -3597,8 +3630,8 @@ function cargarDatosClinicosPastilleo(emp){
   renderAlertaFrecuenciaPastilleo(emp);
 }
   
-function selPastEmp(noEmp){
-  const emp = HC.find(e=>String(e.noEmp)===String(noEmp));
+function selPastEmp(noEmp, empObj){
+  const emp = empObj||(HC.find(e=>String(e.noEmp)===String(noEmp)));
   if(!emp){toast('Empleado no encontrado','err');return;}
   _pastEmp = emp;
 
@@ -4018,6 +4051,48 @@ function renderPastList(){
         </div>
       </div>
     </div>`).join('');
+
+  // ── Render estadística ─────────────────────────────────────
+  const statsCard=document.getElementById('past-stats-card');
+  if(statsCard) statsCard.style.display=lista.length?'block':'none';
+  if(!lista.length) return;
+
+  // KPIs
+  const pacUnicos=new Set(lista.map(c=>String(c.noEmp))).size;
+  const motivoCnt={};
+  lista.forEach(c=>{
+    const m=(c.diagnostico||'Sin especificar').trim();
+    motivoCnt[m]=(motivoCnt[m]||0)+1;
+  });
+  const topMotivos=Object.entries(motivoCnt).sort((a,b)=>b[1]-a[1]);
+  const maxM=topMotivos[0]?.[1]||1;
+
+  const setEl=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setEl('past-stat-total',lista.length);
+  setEl('past-stat-pac',pacUnicos);
+  setEl('past-stat-med',topMotivos[0]?.[0]?.slice(0,16)||'—');
+
+  // Turno label
+  const turnoEl=document.getElementById('past-stat-turno');
+  if(turnoEl){
+    const ahora2=new Date();
+    const h=ahora2.getHours();
+    turnoEl.textContent=h<14?'Turno Matutino':h<22?'Turno Vespertino':'Turno Nocturno';
+  }
+
+  // Top motivos bars
+  const motEl=document.getElementById('past-stat-motivos');
+  if(motEl){
+    motEl.innerHTML=topMotivos.slice(0,8).map(([mot,n],i)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bor)">
+        <span style="min-width:18px;font-size:10px;font-weight:700;color:var(--tx3)">${i+1}</span>
+        <div style="flex:1;font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${mot}</div>
+        <div style="background:var(--sf3);border-radius:3px;height:6px;width:80px;flex-shrink:0">
+          <div style="height:100%;background:var(--tl);border-radius:3px;width:${Math.round(n/maxM*100)}%"></div>
+        </div>
+        <span style="font-size:11px;font-weight:800;min-width:18px;text-align:right">${n}</span>
+      </div>`).join('');
+  }
 }
 
 function abrirNuevoUsuario(){
@@ -4297,6 +4372,38 @@ async function guardarCita(){
   toast(r.ok?'✅ Cita agendada':'Guardada sin conexión','ok');
   closeModal('mo-cita');
   renderCitas();
+}
+
+
+// ── EXTERNO / VISITANTE ───────────────────────────────────────
+function registrarExterno(){
+  const nombre=(document.getElementById('ext-nombre')?.value||'').trim();
+  const empresa=(document.getElementById('ext-empresa')?.value||'').trim();
+  if(!nombre){toast('Escribe el nombre del visitante','err');document.getElementById('ext-nombre')?.focus();return;}
+  const emp={
+    noEmp:'EXT-'+Date.now().toString().slice(-4),
+    nombre, empresa,
+    planta:'Externa', depto:empresa||'—',
+    puesto:'Externo/Visitante',
+    nss:'', genero:'', turno:'', esExterno:true
+  };
+  // Save to known externals autocomplete
+  const extList=JSON.parse(localStorage.getItem('so_ext')||'[]');
+  if(!extList.find(e=>e.nombre===nombre)){
+    extList.unshift({nombre,empresa});
+    if(extList.length>50) extList.pop();
+    localStorage.setItem('so_ext',JSON.stringify(extList));
+  }
+  closeModal('mo-ext');
+  // Load into whichever screen is active
+  const scCap=document.getElementById('sc-captura');
+  const scPast=document.getElementById('sc-pastilleo');
+  if(scPast&&scPast.classList.contains('on')){
+    selPastEmp(null, emp);
+  } else {
+    if(!scCap||!scCap.classList.contains('on')) go('captura');
+    setTimeout(()=>abrirConsultaEmpleado(null, emp), 150);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
